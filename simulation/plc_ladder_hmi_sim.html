@@ -1,0 +1,1907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smart textile line: ladder and HMI simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  --paper: #ECEEF1; --card: #FFFFFF; --ink: #16212C; --ink2: #536170; --line: #CDD4DB;
+  --accent: #2F3F9E; --accent-ink: #FFFFFF; --thread: #B8503F;
+  --on: #17985A; --wire-off: #A9B4BF; --amber: #E39B00; --red: #D43D3D;
+  --hmi: #0B2132; --hmi2: #123349; --hmi-line: #2A5572; --hmi-ink: #E5F1F7; --hmi-dim: #8DAFC3;
+  --fab: #35BFD3; --belt: #3A4551; --metal: #8D99A6; --lampoff: #D5DBE1; --plantbg: #F6F8FA;
+  --ui: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0E151C; --card: #16202A; --ink: #E6EDF3; --ink2: #9DB0C1; --line: #2A3946;
+    --accent: #8E9CFF; --accent-ink: #0E151C; --thread: #E0735F;
+    --on: #36D17F; --wire-off: #4C5B69; --amber: #F2B134; --red: #F0605F;
+    --hmi: #07161F; --hmi2: #0E2736; --hmi-line: #24506B;
+    --belt: #2C353E; --metal: #6E7B88; --lampoff: #2B3946; --plantbg: #101A23;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0E151C; --card: #16202A; --ink: #E6EDF3; --ink2: #9DB0C1; --line: #2A3946;
+  --accent: #8E9CFF; --accent-ink: #0E151C; --thread: #E0735F;
+  --on: #36D17F; --wire-off: #4C5B69; --amber: #F2B134; --red: #F0605F;
+  --hmi: #07161F; --hmi2: #0E2736; --hmi-line: #24506B;
+  --belt: #2C353E; --metal: #6E7B88; --lampoff: #2B3946; --plantbg: #101A23;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font: 400 15px/1.45 var(--ui); -webkit-text-size-adjust: 100%; }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.mono { font-family: var(--mono); }
+.sm { font-size: 12px; }
+
+.weave {
+  height: 8px;
+  background:
+    repeating-linear-gradient(90deg, var(--accent) 0 12px, transparent 12px 24px) 0 0 / 24px 4px repeat-x,
+    repeating-linear-gradient(90deg, transparent 0 12px, var(--thread) 12px 24px) 0 4px / 24px 4px repeat-x;
+}
+
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 14px 22px 10px; }
+.top h1 { margin: 0; font-size: 24px; line-height: 1.15; font-weight: 700; letter-spacing: .1px; }
+.top p { margin: 2px 0 0; color: var(--ink2); max-width: 60ch; }
+.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.ctl .grp { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); }
+.ctl .grp button { border: 0; background: transparent; padding: 7px 11px; cursor: pointer; border-right: 1px solid var(--line); min-width: 40px; }
+.ctl .grp button:last-child { border-right: 0; }
+.ctl .grp button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.ctl select { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 7px 8px; }
+#clock { font: 500 12px var(--mono); color: var(--ink2); padding-left: 4px; }
+
+nav.tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 0 22px; border-bottom: 1px solid var(--line); }
+nav.tabs button { border: 0; background: transparent; padding: 10px 16px; cursor: pointer; color: var(--ink2); font-weight: 500; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 700; }
+
+main { padding: 18px 22px 40px; max-width: 1500px; margin: 0 auto; }
+.panel[hidden] { display: none; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.card h2 { margin: 0 0 8px; font-size: 17px; font-weight: 700; }
+.card h2 small { font-weight: 400; color: var(--ink2); font-size: 13px; margin-left: 8px; }
+
+.operator { display: grid; grid-template-columns: minmax(380px, 440px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 980px) { .operator { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------------- HMI screen ---------------- */
+.hmi { background: var(--hmi); color: var(--hmi-ink); border-radius: 12px; padding: 14px; border: 6px solid #1B2A36; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.hmi-title { text-align: center; font-weight: 700; letter-spacing: .6px; font-size: 17px; padding: 4px 0 10px; border-bottom: 1px solid var(--hmi-line); margin-bottom: 10px; }
+.hmi-title span { display: block; font-size: 13px; font-weight: 500; color: var(--hmi-dim); letter-spacing: 2px; }
+.hmi-top { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.hmi .box { background: var(--hmi2); border: 1px solid var(--hmi-line); border-radius: 8px; padding: 8px 10px; }
+.hmi .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 0; font-size: 13px; }
+.hmi .row label { color: var(--hmi-dim); }
+.pill { min-width: 84px; text-align: center; padding: 2px 8px; border-radius: 5px; font-weight: 700; font-size: 12.5px; background: #2B4A60; color: #fff; }
+#h-status[data-k="RUNNING"] { background: #1CA55B; }
+#h-status[data-k="FAULT"] { background: #D43D3D; }
+#h-status[data-k="STOPPED"] { background: #5A6B79; }
+#h-mode { background: #2C7FB8; }
+#h-prod { background: #D9A400; color: #1B1500; }
+#h-step { background: #E8F1F6; color: #0B2132; }
+.hbtns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.hbtn { border: 0; border-radius: 7px; padding: 9px 4px; font-weight: 700; font-size: 13px; color: #fff; cursor: pointer; background: #3F5565; box-shadow: inset 0 -3px 0 rgba(0,0,0,.28); transition: transform .08s; }
+.hbtn:active, .hbtn.flash { transform: translateY(2px); box-shadow: inset 0 -1px 0 rgba(0,0,0,.28); }
+.hbtn.start { background: #1CA55B; } .hbtn.stop { background: #D43D3D; } .hbtn.reset { background: #6A7B89; }
+.hbtn.mode, .hbtn.prodsel { background: #2C6E9A; }
+.hbtn.sel { outline: 2px solid #fff; outline-offset: -3px; }
+.hbtn.dim { opacity: .45; }
+.hbtn.estop { grid-column: span 2; background: #C62828; font-size: 15px; letter-spacing: 2px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.35), 0 0 0 3px #7a1313; }
+.hbtn.wide { grid-column: span 3; background: #34495A; font-weight: 600; }
+.hmi-sec { margin-top: 12px; }
+.hmi-sec h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: 1.4px; color: var(--hmi-dim); font-weight: 600; }
+.lamps { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 11px; color: var(--hmi-dim); }
+.lamps i { display: block; width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 4px; background: #31485A; border: 1px solid #4D6A80; }
+.lamps div.on i { background: #35E08A; box-shadow: 0 0 10px #35E08A; border-color: #35E08A; }
+.lamps div.on { color: #fff; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile { background: var(--hmi2); border: 1px solid var(--hmi-line); border-radius: 8px; padding: 6px 8px; text-align: center; }
+.tile b { display: block; font: 600 20px/1.1 var(--mono); margin-top: 2px; }
+.tile span { font-size: 11px; color: var(--hmi-dim); letter-spacing: 1px; }
+.tile.g b { color: #4EE59A; } .tile.r b { color: #FF7A7A; }
+.alarm { margin-top: 12px; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #1B3446; border: 1px solid var(--hmi-line); }
+.alarm span { font-size: 12px; letter-spacing: 1.4px; color: var(--hmi-dim); font-weight: 600; }
+.alarm b { font-size: 14px; }
+.alarm[data-k="fault"] { background: #6B1D1D; border-color: #E25555; animation: blink 1s steps(2) infinite; }
+.alarm[data-k="ok"] b { color: #4EE59A; }
+@keyframes blink { 50% { background: #8F2626; } }
+@media (prefers-reduced-motion: reduce) { .alarm[data-k="fault"] { animation: none; } .hbtn { transition: none; } }
+
+/* ---------------- plant ---------------- */
+#plant { width: 100%; height: auto; display: block; background: var(--plantbg); border-radius: 8px; border: 1px solid var(--line); }
+.pl-ground { stroke: var(--line); stroke-width: 2; }
+.pl-belt { fill: var(--belt); }
+.pl-dash { stroke: #C8D1DA; stroke-width: 3; stroke-dasharray: 10 14; opacity: .35; }
+.pl-dash.run { opacity: .95; }
+.pl-leg { stroke: var(--metal); stroke-width: 6; }
+.pl-metal { fill: var(--metal); }
+.pl-lamp { fill: var(--lampoff); stroke: var(--ink2); stroke-width: 1.5; }
+.pl-lamp.on { fill: var(--on); stroke: var(--on); filter: drop-shadow(0 0 4px var(--on)); }
+.pl-beam { stroke: var(--amber); stroke-width: 2; stroke-dasharray: 3 4; opacity: .2; }
+.pl-beam.on { opacity: 1; }
+.pl-blade { fill: #C5CDD5; stroke: var(--ink2); stroke-width: 1.5; }
+.pl-press { fill: #D96B3B; }
+.pl-cam { fill: #2E3B48; }
+.pl-flash { fill: #FFE98A; }
+.pl-robot { fill: #E8731F; }
+.pl-arm { stroke: #E8731F; stroke-width: 12; stroke-linecap: round; }
+.pl-joint { fill: #B8540F; }
+.pl-grip { fill: #2E3B48; }
+.pl-grip.fault { fill: var(--red); }
+.pl-box { fill: #E7D3A8; stroke: #B49A62; stroke-width: 1.5; }
+.pl-bin { fill: none; stroke: var(--metal); stroke-width: 5; stroke-linejoin: round; }
+.pl-fabric-a { fill: var(--fab); stroke: #1B8FA1; stroke-width: 1; }
+.pl-stain { fill: #3B2418; }
+.pl-stain2 { fill: #8F1F1F; }
+.pl-sheen { fill: #fff; }
+.pl-cutmark { stroke: #0B6E7C; stroke-width: 2; }
+.pl-txt { font: 500 13px var(--ui); fill: var(--ink2); }
+.pl-txt.tiny { font-size: 11px; }
+.pl-txt.strong { font-weight: 700; fill: var(--ink); font-size: 14px; }
+
+.faults { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.faults button { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.faults button[aria-pressed="true"] { background: var(--red); border-color: var(--red); color: #fff; font-weight: 600; }
+.hint { color: var(--ink2); margin: 8px 0 0; font-size: 13.5px; max-width: 80ch; }
+.stack { display: grid; gap: 16px; min-width: 0; }
+
+/* ---------------- ladder ---------------- */
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 12px; }
+.bar input[type=search] { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 7px 10px; min-width: 220px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips a { text-decoration: none; color: var(--ink); border: 1px solid var(--line); background: var(--card); width: 30px; height: 30px; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+.chips a:hover { border-color: var(--accent); color: var(--accent); }
+.toggle { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.toggle[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.legend { display: flex; gap: 16px; font-size: 13px; color: var(--ink2); align-items: center; }
+.legend i { display: inline-block; width: 26px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+h2.sec { font-size: 17px; margin: 26px 0 8px; padding-bottom: 6px; border-bottom: 2px solid var(--line); scroll-margin-top: 12px; }
+.rung { background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--line); border-radius: 8px; margin: 0 0 12px; padding: 8px 12px 6px; }
+.rung.live { border-left-color: var(--on); }
+.rung[hidden] { display: none; }
+.rung header { display: flex; align-items: baseline; gap: 10px; }
+.rung h3 { margin: 0; font-size: 15px; font-weight: 600; flex: 1; }
+.rid { font: 600 12px var(--mono); color: var(--accent); }
+.rstate { font: 500 11px var(--mono); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); }
+.rstate.on { background: var(--on); border-color: var(--on); color: #fff; }
+.rsvg { overflow-x: auto; }
+.rsvg svg { display: block; width: 100%; min-width: 860px; height: auto; }
+.rnote { margin: 2px 0 4px; font-size: 13px; color: var(--ink2); max-width: 110ch; }
+.w { stroke-width: 2.6; stroke-linecap: round; }
+.w.on { stroke: var(--on); } .w.off { stroke: var(--wire-off); }
+.cb { stroke-width: 3.2; fill: none; stroke-linecap: round; }
+.cb.on { stroke: var(--on); } .cb.off { stroke: var(--ink2); }
+.rail { stroke: var(--ink); stroke-width: 4; }
+.tg { font: 500 11.5px var(--mono); fill: var(--ink); text-anchor: middle; }
+.sh { font: 400 11px var(--ui); fill: var(--ink2); text-anchor: middle; }
+.cs { font: 600 12.5px var(--mono); fill: var(--ink); text-anchor: middle; }
+.bx { fill: var(--card); stroke-width: 2.6; }
+.bx.on { stroke: var(--on); } .bx.off { stroke: var(--ink2); }
+.bt { font: 600 11.5px var(--mono); fill: var(--ink); text-anchor: middle; }
+.bs { font: 400 10.5px var(--mono); fill: var(--ink2); text-anchor: middle; }
+
+/* ---------------- tables ---------------- */
+.tbl-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--ink2); background: color-mix(in srgb, var(--paper) 70%, var(--card)); position: sticky; top: 0; }
+tr:last-child td { border-bottom: 0; }
+td.val { font: 500 13px var(--mono); min-width: 90px; color: var(--ink2); }
+td.val.on { color: var(--on); font-weight: 600; }
+.mini { border: 1px solid var(--line); background: var(--card); border-radius: 5px; padding: 2px 9px; cursor: pointer; font-size: 12.5px; margin-right: 3px; }
+.mini[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.fix td:nth-child(1) { width: 38%; } .fix td:nth-child(2) { width: 42%; }
+.fix .rl { font: 500 12px var(--mono); color: var(--accent); }
+
+/* ---------------- openplc ---------------- */
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+@media (max-width: 980px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+ol.steps { padding-left: 20px; margin: 6px 0; }
+ol.steps li { margin: 6px 0; max-width: 70ch; }
+code, .code { font-family: var(--mono); font-size: 12.5px; }
+code { background: color-mix(in srgb, var(--paper) 70%, var(--card)); padding: 1px 5px; border-radius: 4px; }
+pre#st-code { margin: 0; padding: 14px; background: var(--hmi); color: #D8E8F0; border-radius: 8px; overflow: auto; max-height: 560px; font: 400 12px/1.5 var(--mono); tab-size: 2; }
+.note { border-left: 4px solid var(--amber); background: color-mix(in srgb, var(--amber) 14%, var(--card)); padding: 8px 12px; border-radius: 4px; margin: 10px 0; max-width: 90ch; }
+</style>
+</head>
+<body>
+<div class="weave" aria-hidden="true"></div>
+<header class="top">
+  <div>
+    <h1>Smart textile line: ladder and HMI simulator</h1>
+    <p>Version 2. A pipelined line with emergency stop: the ladder runs live here, and the OpenPLC program is generated from the same rungs.</p>
+  </div>
+  <div class="ctl" aria-label="Simulation controls">
+    <button class="btn primary" id="btn-run" aria-pressed="false">Pause</button>
+    <button class="btn" id="btn-step" disabled title="Run one PLC scan while paused">Step scan</button>
+    <div class="grp" id="speed" role="group" aria-label="Simulation speed">
+      <button data-s="1" aria-pressed="false">1x</button><button data-s="2" aria-pressed="true">2x</button><button data-s="5" aria-pressed="false">5x</button><button data-s="10" aria-pressed="false">10x</button><button data-s="20" aria-pressed="false">20x</button>
+    </div>
+    <label class="sr" for="mix" style="position:absolute;left:-9999px">Product mix</label>
+    <select id="mix" title="Which products the feeder delivers">
+      <option value="alt">Alternate A / B</option><option value="A">Only product A</option><option value="B">Only product B</option><option value="rand">Random (30% B)</option>
+    </select>
+    <button class="btn" id="btn-power" title="Reset PLC memory and the virtual plant">Power cycle</button>
+    <span id="clock"></span>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Views">
+  <button role="tab" data-tab="operator" aria-selected="true">Operator</button>
+  <button role="tab" data-tab="ladder" aria-selected="false">Ladder</button>
+  <button role="tab" data-tab="io" aria-selected="false">I/O monitor</button>
+  <button role="tab" data-tab="openplc" aria-selected="false">OpenPLC</button>
+  <button role="tab" data-tab="fixes" aria-selected="false">Corrections</button>
+</nav>
+
+<main>
+<!-- ============ OPERATOR ============ -->
+<section class="panel" id="panel-operator">
+  <div class="operator">
+    <div class="hmi" aria-label="HMI screen">
+      <div class="hmi-title">SMART TEXTILE MANUFACTURING</div>
+      <div class="hmi-top">
+        <div class="box">
+          <div class="row"><label>Status</label><span class="pill" id="h-status" data-k="STOPPED">STOPPED</span></div>
+          <div class="row"><label>Mode</label><span class="pill" id="h-mode">AUTO</span></div>
+          <div class="row"><label>Product at S1</label><span class="pill" id="h-prod">--</span></div>
+          <div class="row"><label>Phase</label><span class="pill" id="h-step">IDLE</span></div>
+        </div>
+        <div class="hbtns">
+          <button class="hbtn start" data-hmi="M100">START</button>
+          <button class="hbtn stop" data-hmi="M101">STOP</button>
+          <button class="hbtn reset" data-hmi="M102">RESET</button>
+          <button class="hbtn mode sel" id="btn-auto" data-hmi="M103">AUTO</button>
+          <button class="hbtn mode" id="btn-manual" data-hmi="M104">MANUAL</button>
+          <button class="hbtn" data-hmi="M107" title="Clear counters and KPIs">CLEAR</button>
+          <button class="hbtn prodsel dim" id="btn-man-a" data-hmi="M105" title="Manual mode only">PRODUCT A</button>
+          <button class="hbtn prodsel dim" id="btn-man-b" data-hmi="M106" title="Manual mode only">PRODUCT B</button>
+          <span></span>
+          <button class="hbtn estop" data-hmi="M108" title="Emergency stop: latches until RESET">E-STOP</button>
+        </div>
+      </div>
+      <div class="hmi-sec">
+        <h3>STATION STATUS</h3>
+        <div class="lamps">
+          <div data-lamp="Y0"><i></i>FEED</div><div data-lamp="M50"><i></i>S1 ID</div><div data-lamp="Y2"><i></i>S2 CUT</div><div data-lamp="Y3"><i></i>S3 FINISH</div><div data-lamp="Y4"><i></i>S4 INSPECT</div><div data-lamp="Y5"><i></i>S5 ROBOT</div><div data-lamp="Y10"><i></i>PACK</div>
+        </div>
+      </div>
+      <div class="hmi-sec">
+        <h3>PRODUCTION DATA</h3>
+        <div class="tiles">
+          <div class="tile"><span>TOTAL</span><b id="h-total">0</b></div>
+          <div class="tile g"><span>GOOD</span><b id="h-good">0</b></div>
+          <div class="tile r"><span>REJECT</span><b id="h-reject">0</b></div>
+          <div class="tile"><span>DEFECT %</span><b id="h-defect">0.0%</b></div>
+          <div class="tile"><span>TAKT (s)</span><b id="h-cycle">--</b></div>
+          <div class="tile"><span>RATE / min</span><b id="h-rate">--</b></div>
+          <div class="tile"><span>PACKED</span><b id="h-packed">0</b></div>
+          <div class="tile"><span>ON LINE</span><b id="h-wip">0</b></div>
+          <div class="tile"><span>YIELD %</span><b id="h-yield">--</b></div>
+        </div>
+      </div>
+      <div class="alarm" id="h-alarm-box"><span>ALARM</span><b id="h-alarm">READY. PRESS START</b></div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <h2>Process line<small>Sensor lamps show X inputs, output lamps show Y outputs</small></h2>
+        <svg id="plant" viewBox="0 0 1000 350" role="img" aria-label="Animated textile line: feeder, cutter, heat press, inspection camera, robot, packaging and reject bin"></svg>
+        <div class="faults" id="faults" role="group" aria-label="Inject a fault">
+          <button data-flag="robotFault" aria-pressed="false">Robot fault (X16 open)</button>
+          <button data-flag="camOff" aria-pressed="false">Camera offline</button>
+          <button data-flag="jam" aria-pressed="false">Conveyor jam</button>
+          <button data-flag="noMaterial" aria-pressed="false">No material</button>
+          <button data-flag="estop" aria-pressed="false">E-stop chain open (X17)</button>
+        </div>
+        <p class="hint">Press START on the HMI. Up to five products are on the line at once. Press E-STOP (or open the E-stop chain) and everything stops; RESET and START bring it back. Switch on a fault to see the alarm, switch it off, then RESET and START. Product B is the defective one, and the camera result (X11, X12) decides where the robot puts it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LADDER ============ -->
+<section class="panel" id="panel-ladder" hidden>
+  <div class="bar">
+    <input type="search" id="lad-search" placeholder="Search tag or title, e.g. Y1 or timeout" aria-label="Search rungs">
+    <button class="toggle" id="lad-only" aria-pressed="false">Energized rungs only</button>
+    <div class="chips" id="sec-chips" aria-label="Jump to section"></div>
+    <div class="legend"><span><i style="background:var(--on)"></i>power flowing</span><span><i style="background:var(--wire-off)"></i>no power</span></div>
+  </div>
+  <div id="ladder-list"></div>
+</section>
+
+<!-- ============ I/O ============ -->
+<section class="panel" id="panel-io" hidden>
+  <p class="hint" style="margin-top:0">Live values of every device. Force a field input to 0 or 1 to test the logic, then set it back to Auto so the virtual plant drives it again.</p>
+  <div id="io-host"></div>
+</section>
+
+<!-- ============ OPENPLC ============ -->
+<section class="panel" id="panel-openplc" hidden>
+  <div class="cols">
+    <div class="stack">
+      <div class="card">
+        <h2>Run it on OpenPLC</h2>
+        <ol class="steps">
+          <li>Open the OpenPLC Runtime web page (usually <code>http://localhost:8080</code>), go to <b>Programs</b> and choose <b>Upload program</b>. Select <code>SmartTextile.st</code>, or save the code on this page into a file with that name.</li>
+          <li>Press <b>Launch program</b>. The runtime compiles it with matiec; this takes about a minute.</li>
+          <li>Open <b>Settings</b>, tick <b>Enable Modbus Server</b> (port 502) and save.</li>
+          <li>On the dashboard press <b>Start PLC</b>.</li>
+          <li>Connect a Modbus TCP client. Write coil 800 to start the machine and coil 808 for the HMI emergency stop, read coils 0 to 11 for the outputs and holding registers 1024 to 1033 for the counts and KPIs. The table below lists every address. The easiest way to drive the sensors is the plant_sim.py script.</li>
+        </ol>
+        <div class="note">Simulation profile: the field inputs X0 to X20 are coils 816 to 832, so a Modbus client or plant simulator can act as the sensors and the vision system. At power-up X16 and X17 read 0, so the PLC starts with a latched E-stop and fault; press RESET once the plant script is connected. Switch to the hardware profile to map them to real <code>%IX</code> inputs. Some clients count addresses from 1, so try address + 1 if coil 800 does not respond.</div>
+        <div class="note">The runtime executes this Structured Text program. The ladder drawings on the Ladder tab are the same logic and are the reference if you draw the rungs yourself in OpenPLC Editor.</div>
+      </div>
+      <div class="card">
+        <h2>Address map</h2>
+        <div class="tbl-wrap" style="max-height:420px;overflow:auto">
+          <table><thead><tr><th>Tag</th><th>Description</th><th>Variable</th><th>OpenPLC</th><th>Modbus</th></tr></thead><tbody id="map-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>SmartTextile.st<small id="st-meta"></small></h2>
+      <div class="bar">
+        <div class="ctl"><div class="grp" id="st-profile" role="group" aria-label="Address profile">
+          <button data-p="simulation" aria-pressed="true">Simulation inputs</button><button data-p="hardware" aria-pressed="false">Hardware inputs</button>
+        </div></div>
+        <button class="btn primary" id="st-copy">Copy code</button>
+      </div>
+      <pre id="st-code" tabindex="0" aria-label="Structured Text program"></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CORRECTIONS ============ -->
+<section class="panel" id="panel-fixes" hidden>
+  <h2 class="sec" style="margin-top:0">What version 2 adds</h2>
+  <div class="tbl-wrap"><table class="fix"><thead><tr><th>Weak point in version 1</th><th>Version 2</th><th>Rungs</th></tr></thead><tbody id="fix2-body"></tbody></table></div>
+  <h2 class="sec">Errors corrected from the original ladder design</h2>
+  <p class="hint" style="margin-top:0">Based on my reading of your diagram, so check any row against your own copy.</p>
+  <div class="tbl-wrap"><table class="fix"><thead><tr><th>Original</th><th>Corrected</th><th>Rungs</th></tr></thead><tbody id="fix-body"></tbody></table></div>
+</section>
+</main>
+
+<script>
+const G13 = (function () {
+'use strict';
+
+const SCAN_MS = 20;                    // fixed virtual scan time (matches the 20 ms OpenPLC task interval)
+
+/* ================================================================== *
+ *  DEVICE TABLE                                                       *
+ * ================================================================== */
+const DEV = [];
+const byTag = {};
+
+function addDev(tag, st, desc, short, type, group, loc, hw) {
+  const kind = tag === 'SM400' ? 'S' : tag[0];
+  const d = { tag, st, desc, short, type, group, loc: loc || '', hw: hw || '', kind };
+  DEV.push(d);
+  byTag[tag] = d;
+}
+
+const X_DEFS = [
+  ['X0',  'X0_StartPB',           'Start push-button (physical)',                                   'Start PB'],
+  ['X1',  'X1_StopPB',            'Stop push-button (physical)',                                    'Stop PB'],
+  ['X2',  'X2_ResetPB',           'Reset push-button (physical)',                                   'Reset PB'],
+  ['X3',  'X3_AtS1_FeedId',       'Product at station 1: feed / identification',                    'At S1'],
+  ['X4',  'X4_TypeA_Sensor',      'Type A sensor',                                                  'Type A'],
+  ['X5',  'X5_TypeB_Sensor',      'Type B sensor',                                                  'Type B'],
+  ['X6',  'X6_AtS2_Cutting',      'Product at station 2: cutting',                                  'At S2 cut'],
+  ['X7',  'X7_AtS3_Finishing',    'Product at station 3: finishing',                                'At S3 finish'],
+  ['X10', 'X10_AtS4_Inspection',  'Product at station 4: inspection',                               'At S4 insp.'],
+  ['X11', 'X11_InspComplete',     'Inspection complete (vision result valid)',                      'Insp. done'],
+  ['X12', 'X12_DefectDetected',   'Defect detected by vision',                                      'Defect'],
+  ['X13', 'X13_RobotReady',       'Robot ready (home position)',                                    'Robot ready'],
+  ['X14', 'X14_RobotPlaceDone',   'Robot place done',                                               'Place done'],
+  ['X15', 'X15_PackComplete',     'Packaging complete',                                             'Pack done'],
+  ['X16', 'X16_RobotHealthy',     'Robot healthy (NC wiring: ON = OK, OFF = fault)',                'Robot OK (NC)'],
+  ['X17', 'X17_EStopOK',          'Emergency stop chain (NC wiring: ON = released, OFF = pressed)', 'E-stop OK (NC)'],
+  ['X20', 'X20_AtS5_Robot',       'Product at station 5: robot pick',                               'At S5 robot'],
+];
+X_DEFS.forEach((r, i) => {
+  const hw = '%IX' + Math.floor(i / 8) + '.' + (i % 8);
+  const sm = '%QX' + (102 + Math.floor(i / 8)) + '.' + (i % 8);
+  addDev(r[0], r[1], r[2], r[3], 'BOOL', 'Field inputs', sm, hw);
+});
+
+const Y_DEFS = [
+  ['Y0',  'Y0_FeederMotor',   'Feeder motor',                 'Feeder'],
+  ['Y1',  'Y1_MainConveyor',  'Main conveyor',                'Conveyor'],
+  ['Y2',  'Y2_Cutter',        'Cutter (stage 1)',             'Cutter'],
+  ['Y3',  'Y3_HeatPress',     'Heat press (stage 2)',         'Heat press'],
+  ['Y4',  'Y4_InspTrigger',   'Inspection trigger (camera)',  'Camera trig.'],
+  ['Y5',  'Y5_RobotPickReq',  'Robot pick request',           'Pick request'],
+  ['Y6',  'Y6_DestGood',      'Robot destination: good',      'Dest. good'],
+  ['Y7',  'Y7_DestReject',    'Robot destination: reject',    'Dest. reject'],
+  ['Y10', 'Y10_PackMachine',  'Packaging machine',            'Packager'],
+  ['Y11', 'Y11_AlarmBuzzer',  'Alarm buzzer',                 'Buzzer'],
+  ['Y12', 'Y12_RunLamp',      'Run lamp (green)',             'Run lamp'],
+  ['Y13', 'Y13_FaultLamp',    'Fault / E-stop lamp (red)',    'Fault lamp'],
+];
+Y_DEFS.forEach((r, i) => {
+  const loc = '%QX' + Math.floor(i / 8) + '.' + (i % 8);
+  addDev(r[0], r[1], r[2], r[3], 'BOOL', 'Field outputs', loc, loc);
+});
+
+const H_DEFS = [
+  ['M100', 'M100_HmiStart',  'HMI start button',             'HMI start'],
+  ['M101', 'M101_HmiStop',   'HMI stop button',              'HMI stop'],
+  ['M102', 'M102_HmiReset',  'HMI reset button',             'HMI reset'],
+  ['M103', 'M103_HmiAuto',   'HMI auto mode button',         'HMI auto'],
+  ['M104', 'M104_HmiManual', 'HMI manual mode button',       'HMI manual'],
+  ['M105', 'M105_HmiProdA',  'HMI product A override',       'HMI prod A'],
+  ['M106', 'M106_HmiProdB',  'HMI product B override',       'HMI prod B'],
+  ['M107', 'M107_HmiClear',  'HMI clear counters button',    'HMI clear'],
+  ['M108', 'M108_HmiEStop',  'HMI emergency stop button',    'HMI E-stop'],
+];
+H_DEFS.forEach((r, i) => addDev(r[0], r[1], r[2], r[3], 'BOOL', 'HMI bits', '%QX' + (100 + Math.floor(i / 8)) + '.' + (i % 8), ''));
+
+const M_DEFS = [
+  ['M0',  'M0_SystemRun',      'System run',                                  'System run',   '%QX105.0'],
+  ['M1',  'M1_Fault',          'Fault latched',                               'Fault',        '%QX105.1'],
+  ['M2',  'M2_EStop',          'Emergency stop latched',                      'E-stop',       '%QX105.2'],
+  ['M31', 'M31_ManualMode',    'Manual mode (0 = auto)',                      'Manual mode',  '%QX105.3'],
+  ['M17', 'M17_ManualTypeB',   'Manual product selection (0 = A, 1 = B)',     'Manual type B','%QX105.4'],
+  ['M3',  'M3_PhaseIndex',     'Phase: conveyor indexing',                    'Indexing',     '%QX105.5'],
+  ['M4',  'M4_PhaseWork',      'Phase: stations working',                     'Working',      '%QX105.6'],
+  ['M75', 'M75_PackBusy',      'Packaging machine busy',                      'Pack busy',    '%QX105.7'],
+  ['M50', 'M50_S1_Occupied',   'Station 1 occupied',                          'S1 occupied',  '%QX106.0'],
+  ['M51', 'M51_S2_Occupied',   'Station 2 occupied',                          'S2 occupied',  '%QX106.1'],
+  ['M52', 'M52_S3_Occupied',   'Station 3 occupied',                          'S3 occupied',  '%QX106.2'],
+  ['M53', 'M53_S4_Occupied',   'Station 4 occupied',                          'S4 occupied',  '%QX106.3'],
+  ['M54', 'M54_S5_Occupied',   'Station 5 occupied',                          'S5 occupied',  '%QX106.4'],
+  ['M55', 'M55_DefectAtS4',    'Defect flag of the product at station 4',     'Defect @S4',   '%QX106.5'],
+  ['M56', 'M56_DefectAtS5',    'Defect flag of the product at station 5',     'Defect @S5',   '%QX106.6'],
+  ['M60', 'M60_S1_IsTypeB',    'Product at station 1 is type B',              'S1 type B',    '%QX107.0'],
+  ['M61', 'M61_S2_IsTypeB',    'Product at station 2 is type B',              'S2 type B',    '%QX107.1'],
+  ['M62', 'M62_S3_IsTypeB',    'Product at station 3 is type B',              'S3 type B',    '%QX107.2'],
+  ['M63', 'M63_S4_IsTypeB',    'Product at station 4 is type B',              'S4 type B',    '%QX107.3'],
+  ['M64', 'M64_S5_IsTypeB',    'Product at station 5 is type B',              'S5 type B',    '%QX107.4'],
+  ['M69', 'M69_FeedDone',      'Feed time elapsed in this work phase',        'Feed done',    ''],
+  ['M70', 'M70_S1_IdDone',     'Station 1 identification done',               'S1 ID done',   ''],
+  ['M71', 'M71_S2_CutDone',    'Station 2 cutting done',                      'S2 cut done',  ''],
+  ['M72', 'M72_S3_FinishDone', 'Station 3 finishing done',                    'S3 fin. done', ''],
+  ['M73', 'M73_S4_InspDone',   'Station 4 inspection result latched',         'S4 insp. done',''],
+  ['M80', 'M80_S1_Departed',   'Old product has left station 1 (this index)', 'S1 departed',  ''],
+  ['M81', 'M81_S2_Departed',   'Old product has left station 2 (this index)', 'S2 departed',  ''],
+  ['M82', 'M82_S3_Departed',   'Old product has left station 3 (this index)', 'S3 departed',  ''],
+  ['M83', 'M83_S4_Departed',   'Old product has left station 4 (this index)', 'S4 departed',  ''],
+  ['M84', 'M84_S5_Departed',   'Old product has left station 5 (this index)', 'S5 departed',  ''],
+  ['M22', 'M22_GoodSorted',    'Good product sorted (pulse)',                 'Good sorted',  ''],
+  ['M23', 'M23_RejectSorted',  'Reject product sorted (pulse)',               'Rej. sorted',  ''],
+  ['M24', 'M24_IndexComplete', 'Index complete: all products at next station','Index done',   ''],
+  ['M25', 'M25_WorkComplete',  'Work complete: all stations finished',        'Work done',    ''],
+  ['M26', 'M26_StationsDone',  'All occupied stations finished their task',   'Stations done',''],
+  ['M28', 'M28_AllDeparted',   'Every old product has left its station',      'All departed', ''],
+  ['M29', 'M29_AllArrived',    'Every expected product reached its station',  'All arrived',  ''],
+  ['M32', 'M32_PackagedPulse', 'Product packaged (pulse)',                    'Packaged',     ''],
+];
+M_DEFS.forEach(r => addDev(r[0], r[1], r[2], r[3], 'BOOL', 'Internal relays', r[4], ''));
+
+const T_DEFS = [
+  ['T0',  'T0_FeedTime',      'Feed time 2 s',                          'Feed 2s'],
+  ['T1',  'T1_CutTime',       'Cutting time 3 s',                       'Cut 3s'],
+  ['T2',  'T2_FinishA',       'Finishing time, product A 5 s',          'Finish A 5s'],
+  ['T3',  'T3_FinishB',       'Finishing time, product B 8 s',          'Finish B 8s'],
+  ['T4',  'T4_InspTimeout',   'Inspection timeout 5 s',                 'Insp. t/o 5s'],
+  ['T7',  'T7_IndexWdg',      'Index watchdog 15 s (jam / no material)','Index 15s'],
+  ['T8',  'T8_IdDwell',       'Identification dwell 0.5 s',             'ID dwell'],
+  ['T9',  'T9_IdTimeout',     'Identification timeout 3 s',             'ID t/o 3s'],
+  ['T10', 'T10_RobotWdg',     'Robot watchdog 30 s',                    'Robot 30s'],
+  ['T11', 'T11_PackWdg',      'Packaging watchdog 15 s',                'Pack 15s'],
+];
+T_DEFS.forEach(r => addDev(r[0], r[1], r[2], r[3], 'TIMER', 'Timers', '', ''));
+
+addDev('C0', 'C0_GoodCtr',     'Good counter',      'Good count',     'COUNTER', 'Counters', '', '');
+addDev('C1', 'C1_RejectCtr',   'Reject counter',    'Reject count',   'COUNTER', 'Counters', '', '');
+addDev('C2', 'C2_PackagedCtr', 'Packaged counter',  'Packaged count', 'COUNTER', 'Counters', '', '');
+
+const D_DEFS = [
+  ['D100', 'D100_GoodCount',       'Good count',                                  'Good count',   0],
+  ['D101', 'D101_RejectCount',     'Reject count',                                'Reject count', 1],
+  ['D102', 'D102_TotalCount',      'Total count',                                 'Total count',  2],
+  ['D103', 'D103_DefectPctX100',   'Defect percentage x100 (1670 = 16.70 %)',     'Defect %x100', 3],
+  ['D104', 'D104_TaktTime01s',     'Takt time: gap between sorted products (0.1 s)', 'Takt 0.1s',  4],
+  ['D105', 'D105_RateX10PerMin',   'Production rate (0.1 products / min)',        'Rate x10/min', 5],
+  ['D106', 'D106_CurrentProduct',  'Product at station 1 (1 = A, 2 = B)',         'Product 1/2',  6],
+  ['D107', 'D107_Phase',           'Phase (0 idle, 10 indexing, 20 working)',     'Phase',        7],
+  ['D108', 'D108_FaultCode',       'Fault code (0 none, 1-5)',                    'Fault code',   8],
+  ['D109', 'D109_PackagedCount',   'Packaged count',                              'Packaged',     9],
+];
+D_DEFS.forEach(r => addDev(r[0], r[1], r[2], r[3], 'INT', 'Data registers', '%MW' + r[4], ''));
+addDev('D110', 'D110_CycleMs', 'Takt stopwatch (ms, scan based)', 'Takt ms', 'DINT', 'Data registers', '', '');
+addDev('D111', 'D111_RunMs', 'Running time stopwatch (ms, scan based)', 'Run ms', 'DINT', 'Data registers', '', '');
+addDev('SM400', 'TRUE', 'Always ON', 'Always ON', 'BOOL', 'Special', '', '');
+
+/* ================================================================== *
+ *  LADDER DSL                                                         *
+ * ================================================================== */
+const c   = tag => ({ k: 'c', tag });
+const n   = tag => ({ k: 'n', tag });
+const r   = tag => ({ k: 'r', tag });
+const cmp = (tag, op, val) => ({ k: 'cmp', tag, op, val });
+const on  = () => ({ k: 'c', tag: 'SM400' });
+const ser = (...a) => ({ k: 's', a });
+const par = (...a) => ({ k: 'p', a });
+
+const OUT  = tag => ({ t: 'OUT', tag });
+const SET  = tag => ({ t: 'SET', tag });
+const RST  = tag => ({ t: 'RST', tag });
+const RSTN = (tags, label) => ({ t: 'RSTN', tags, label });
+const TON  = (tag, ms) => ({ t: 'TON', tag, ms });
+const CTU  = (tag, pv, reset) => ({ t: 'CTU', tag, pv, reset });
+const MOV  = (src, dst) => ({ t: 'MOV', src, dst });
+const COPY = (src, dst) => ({ t: 'COPY', src, dst });
+const CALC = (dst, op, a, b) => ({ t: 'CALC', dst, e: { op, a, b } });
+const CALC2 = (dst, e, text) => ({ t: 'CALC', dst, e, text });
+
+const range = (prefix, a, b) => {
+  const out = [];
+  for (let i = a; i <= b; i++) if (byTag[prefix + i]) out.push(prefix + i);
+  return out;
+};
+
+const RUNGS = [];
+function rung(sec, title, net, outs, note) {
+  RUNGS.push({ id: 'R' + (RUNGS.length + 1), sec, title, net, outs, note: note || '' });
+}
+
+const A = 'A  Faults, emergency stop and reset';
+const B = 'B  System start / stop';
+const C = 'C  Mode and product selection';
+const D = 'D  Line control: indexing and shifting';
+const E = 'E  Station 0: Feeder';
+const F = 'F  Station 1: Identification';
+const G = 'G  Station 2: Cutting (stage 1)';
+const H = 'H  Station 3: Finishing (stage 2)';
+const I = 'I  Station 4: Quality inspection';
+const J = 'J  Station 5: Robot sorting';
+const K = 'K  Packaging machine';
+const L = 'L  Work complete, conveyor and watchdog';
+const M = 'M  Counters, takt time and KPIs';
+const N = 'N  Indicators';
+
+/* A. faults, E-stop, reset ------------------------------------------- */
+rung(A, 'Robot fault or robot timeout', par(n('X16'), c('T10')),
+  [SET('M1'), MOV(2, 'D108')], 'X16 is wired normally closed: OFF = robot fault. T10 is the robot watchdog.');
+rung(A, 'Inspection timeout (no vision result)', c('T4'),
+  [SET('M1'), MOV(1, 'D108')], 'Camera or vision software did not answer within 5 s.');
+rung(A, 'Index or packaging timeout (jam, no material)', par(c('T7'), c('T11')),
+  [SET('M1'), MOV(3, 'D108')], 'A product never reached its next station within 15 s (jam, no material), or packaging never finished.');
+rung(A, 'Unknown product (identification failed)', c('T9'),
+  [SET('M1'), MOV(4, 'D108')], 'Neither or both type sensors active after 3 s in auto mode.');
+rung(A, 'Emergency stop (chain open or HMI button)', par(n('X17'), r('M108'), c('M2')),
+  [SET('M2'), MOV(5, 'D108')],
+  'X17 is the NC emergency-stop chain: OFF = pressed. The HMI E-stop button is a second source. Both latch M2, which drops M0 and with it every output. This rung comes last among the fault rungs, so fault code 5 always wins while the E-stop is latched.');
+rung(A, 'Reset: clear faults, E-stop and the line',
+  ser(par(r('M102'), r('X2')), c('X16'), c('X17')),
+  [RSTN(['M1', 'M2'], 'RST M1, M2'), RSTN(['M3', 'M4'], 'RST M3, M4'),
+   RSTN(range('M', 50, 84), 'ZRST M50 M84'),
+   MOV(0, 'D107'), MOV(0, 'D108'), MOV(0, 'D110')],
+  'Only works with the robot healthy and the E-stop chain released. The line is cleared (all slot and tracking bits), so the next Start begins from an empty line.');
+
+/* B. start / stop ---------------------------------------------------- */
+rung(B, 'Start system', ser(par(r('M100'), r('X0')), n('M1'), n('M2'), c('X16'), c('X17')), [SET('M0')],
+  'Edge triggered, and blocked while a fault or E-stop is latched.');
+rung(B, 'Stop system (stop dominates)', par(c('M101'), c('X1'), n('X16'), n('X17'), c('M1'), c('M2')), [RST('M0')],
+  'Placed after the start rung so Stop always wins. Fault, E-stop and robot-not-healthy also stop the system.');
+
+/* C. mode and product selection -------------------------------------- */
+rung(C, 'Select auto mode', c('M103'), [RST('M31')], 'Auto = the product type is read from the type sensors.');
+rung(C, 'Select manual mode', c('M104'), [SET('M31')], 'Manual = the product type of the next product comes from the HMI override buttons.');
+rung(C, 'Manual override: product A', ser(c('M105'), c('M31')), [RST('M17'), MOV(1, 'D106')]);
+rung(C, 'Manual override: product B', ser(c('M106'), c('M31')), [SET('M17'), MOV(2, 'D106')]);
+
+/* D. line control ---------------------------------------------------- */
+rung(D, 'Idle start: feed the first product', ser(c('M0'), n('M3'), n('M4'), n('M1'), n('M2')),
+  [SET('M4'), MOV(20, 'D107')],
+  'The line is empty, so begin with a work phase: only the feeder has anything to do.');
+rung(D, 'Every old product has left its station',
+  ser(c('M0'), c('M3'), par(n('M50'), c('M80')), par(n('M51'), c('M81')), par(n('M52'), c('M82')), par(n('M53'), c('M83')), par(n('M54'), c('M84'))),
+  [OUT('M28')], 'Without this check an index could end at once, because the old product still sits on the station sensor.');
+rung(D, 'Every expected product has arrived',
+  ser(c('M0'), c('M3'), c('X3'), par(n('M50'), c('X6')), par(n('M51'), c('X7')), par(n('M52'), c('X10')), par(n('M53'), c('X20'))),
+  [OUT('M29')], 'Station k needs a product when station k-1 was occupied. Station 1 always needs the new product from the feeder.');
+rung(D, 'Index complete', ser(c('M28'), c('M29')), [OUT('M24')]);
+[['S1', 'M50', 'X3', 'M80'], ['S2', 'M51', 'X6', 'M81'], ['S3', 'M52', 'X7', 'M82'], ['S4', 'M53', 'X10', 'M83'], ['S5', 'M54', 'X20', 'M84']].forEach(q => {
+  rung(D, 'Departure latch ' + q[0], ser(c('M0'), c('M3'), c(q[1]), n(q[2])), [SET(q[3])]);
+});
+rung(D, 'Shift occupancy one station forward', c('M24'),
+  [COPY('M53', 'M54'), COPY('M52', 'M53'), COPY('M51', 'M52'), COPY('M50', 'M51'), SET('M50')],
+  'Copies run from the end of the line backwards, so no value is overwritten before it is copied.');
+rung(D, 'Shift product types one station forward', c('M24'),
+  [COPY('M63', 'M64'), COPY('M62', 'M63'), COPY('M61', 'M62'), COPY('M60', 'M61'), RST('M60')]);
+rung(D, 'Shift defect flag from station 4 to station 5', c('M24'), [COPY('M55', 'M56'), RST('M55')]);
+rung(D, 'Clear done flags and departure latches', c('M24'),
+  [RSTN(['M69', 'M70', 'M71', 'M72', 'M73'], 'RST M69 M73'), RSTN(range('M', 80, 84), 'ZRST M80 M84')]);
+rung(D, 'Index to work', c('M24'), [RST('M3'), SET('M4'), MOV(20, 'D107')]);
+
+/* E. feeder ---------------------------------------------------------- */
+rung(E, 'Feeder at the start of the belt', ser(c('M0'), c('M4'), n('M69')), [OUT('Y0'), TON('T0', 2000)],
+  'During every work phase the feeder places the next product at the belt start. It runs in parallel with all other stations.');
+rung(E, 'Feed done', c('T0'), [SET('M69')]);
+
+/* F. identification (station 1) ------------------------------------- */
+rung(F, 'Identification dwell', ser(c('M0'), c('M4'), c('M50'), c('X3')), [TON('T8', 500)]);
+rung(F, 'Identification timeout', ser(c('M0'), c('M4'), c('M50'), c('X3'), n('M70')), [TON('T9', 3000)]);
+rung(F, 'Identify product A (auto mode)', ser(c('T8'), n('M31'), c('X4'), n('X5')), [RST('M60'), MOV(1, 'D106')]);
+rung(F, 'Identify product B (auto mode)', ser(c('T8'), n('M31'), c('X5'), n('X4')), [SET('M60'), MOV(2, 'D106')]);
+rung(F, 'Product type from HMI (manual mode)', ser(c('T8'), c('M31')), [COPY('M17', 'M60')]);
+rung(F, 'Identification done',
+  ser(c('T8'), par(c('M31'), ser(c('X4'), n('X5')), ser(n('X4'), c('X5')))), [SET('M70')],
+  'Auto mode needs exactly one type sensor. Manual mode skips the check.');
+
+/* G. cutting (station 2) -------------------------------------------- */
+rung(G, 'Cutter and cutting time', ser(c('M0'), c('M4'), c('M51'), c('X6'), n('M71')),
+  [OUT('Y2'), TON('T1', 3000)], 'The cutter only runs while a product is at station 2.');
+rung(G, 'Cutting done', c('T1'), [SET('M71')]);
+
+/* H. finishing (station 3) ------------------------------------------ */
+rung(H, 'Heat press (single coil)', ser(c('M0'), c('M4'), c('M52'), c('X7'), n('M72')), [OUT('Y3')]);
+rung(H, 'Finishing time, product A (5 s)', ser(c('M0'), c('M4'), c('M52'), c('X7'), n('M72'), n('M62')), [TON('T2', 5000)]);
+rung(H, 'Finishing time, product B (8 s)', ser(c('M0'), c('M4'), c('M52'), c('X7'), n('M72'), c('M62')), [TON('T3', 8000)],
+  'The type bit travels with the product (M60 to M64), so this uses the type of the product that is really at station 3.');
+rung(H, 'Finishing done', par(c('T2'), c('T3')), [SET('M72')]);
+
+/* I. inspection (station 4) ----------------------------------------- */
+rung(I, 'Inspection trigger (camera)', ser(c('M0'), c('M4'), c('M53'), c('X10'), n('M73')), [OUT('Y4')],
+  'Y4 tells the vision system to inspect. X11 / X12 come back from OpenCV.');
+rung(I, 'Inspection timeout timer', ser(c('M0'), c('M4'), c('M53'), c('X10'), n('M73'), n('X11')), [TON('T4', 5000)]);
+rung(I, 'Result: good product', ser(c('M0'), c('M4'), c('M53'), c('X10'), c('X11'), n('X12')), [RST('M55')]);
+rung(I, 'Result: defective product', ser(c('M0'), c('M4'), c('M53'), c('X10'), c('X11'), c('X12')), [SET('M55')],
+  'The defect flag travels with the product to the robot station.');
+rung(I, 'Inspection done', ser(c('M0'), c('M4'), c('M53'), c('X10'), c('X11')), [SET('M73')]);
+
+/* J. robot (station 5) ---------------------------------------------- */
+rung(J, 'Robot pick request', ser(c('M0'), c('M4'), c('M54'), c('X20'), n('X14'), par(c('M56'), n('M75'))), [OUT('Y5')],
+  'Held until the robot reports place-done (X14). A good product waits while the packaging machine is still busy.');
+rung(J, 'Destination: good', ser(c('M0'), c('M4'), c('M54'), n('M56')), [OUT('Y6')]);
+rung(J, 'Destination: reject', ser(c('M0'), c('M4'), c('M54'), c('M56')), [OUT('Y7')]);
+rung(J, 'Robot watchdog timer', ser(c('M0'), c('M4'), c('M54')), [TON('T10', 30000)]);
+rung(J, 'Good product sorted (pulse)', ser(c('M0'), c('M4'), c('M54'), n('M56'), r('X14')), [OUT('M22')]);
+rung(J, 'Reject product sorted (pulse)', ser(c('M0'), c('M4'), c('M54'), c('M56'), r('X14')), [OUT('M23')]);
+rung(J, 'Product has left station 5', par(c('M22'), c('M23')), [RST('M54')]);
+
+/* K. packaging ------------------------------------------------------- */
+rung(K, 'Start packaging', c('M22'), [SET('M75')], 'The robot placed a good product on the packaging station.');
+rung(K, 'Packaging machine and watchdog', ser(c('M0'), c('M75')), [OUT('Y10'), TON('T11', 15000)]);
+rung(K, 'Packaged (pulse)', ser(c('M0'), c('M75'), r('X15')), [OUT('M32')]);
+rung(K, 'Packaging done', c('M32'), [RST('M75')]);
+
+/* L. work complete, conveyor ---------------------------------------- */
+rung(L, 'Every occupied station is finished',
+  ser(par(n('M50'), c('M70')), par(n('M51'), c('M71')), par(n('M52'), c('M72')), par(n('M53'), c('M73')), n('M54')),
+  [OUT('M26')], 'Stations work in parallel, so the work phase lasts as long as the slowest station, not the sum of all.');
+rung(L, 'Work complete (feed done, robot home)', ser(c('M0'), c('M4'), c('M69'), c('M26'), c('X13')), [OUT('M25')],
+  'The robot must be back at home (X13) before the conveyor may move.');
+rung(L, 'Work to index', c('M25'), [RST('M4'), SET('M3'), MOV(10, 'D107')]);
+rung(L, 'Main conveyor (single coil)', ser(c('M0'), c('M3'), n('M24')), [OUT('Y1')],
+  'All products ride the same belt, so they all move one station at once.');
+rung(L, 'Index watchdog (15 s)', ser(c('M0'), c('M3')), [TON('T7', 15000)]);
+
+/* M. counters and KPIs ----------------------------------------------- */
+rung(M, 'Stopwatches (add one scan = 20 ms)', ser(c('M0'), par(c('M3'), c('M4'))),
+  [CALC('D110', 'add', 'D110', 20), CALC('D111', 'add', 'D111', 20)],
+  'Scan based. Change the 20 if the OpenPLC task interval is changed.');
+rung(M, 'Takt time of the last product (0.1 s)', par(c('M22'), c('M23')),
+  [CALC('D104', 'div', 'D110', 100), MOV(0, 'D110')],
+  'Time between two consecutive sorted products. With a pipelined line this is shorter than the time one product spends in the line.');
+rung(M, 'Good counter', c('M22'), [CTU('C0', 9999, 'M107')]);
+rung(M, 'Reject counter', c('M23'), [CTU('C1', 9999, 'M107')]);
+rung(M, 'Packaged counter', c('M32'), [CTU('C2', 9999, 'M107')]);
+rung(M, 'Copy counters to data registers', on(), [MOV('C0', 'D100'), MOV('C1', 'D101'), MOV('C2', 'D109')]);
+rung(M, 'Total count', on(), [CALC('D102', 'add', 'D100', 'D101')]);
+rung(M, 'Defect percentage x100', cmp('D102', '>', 0),
+  [CALC2('D103', { op: 'div', a: { op: 'mul', a: 'D101', b: 10000 }, b: 'D102' }, 'D103 = D101 x 10000 / D102')],
+  'Uses 32-bit maths and skips the divide while the total is 0.');
+rung(M, 'Production rate: average products per minute x10', cmp('D111', '>=', 100),
+  [CALC2('D105', { op: 'div', a: { op: 'mul', a: 'D102', b: 6000 }, b: { op: 'div', a: 'D111', b: 100 } }, 'D105 = D102 x 6000 / (D111 / 100)')],
+  'Total products divided by running time. The takt time (D104) is the gap between the last two products and swings between short and long gaps when A and B alternate, so the rate uses the average instead.');
+rung(M, 'Clear counters and KPIs (HMI)', c('M107'),
+  [MOV(0, 'D103'), MOV(0, 'D104'), MOV(0, 'D105'), MOV(0, 'D110'), MOV(0, 'D111')],
+  'The counters themselves are cleared by the reset input of C0, C1 and C2.');
+
+/* N. indicators ------------------------------------------------------ */
+rung(N, 'Run lamp', c('M0'), [OUT('Y12')]);
+rung(N, 'Alarm buzzer and fault lamp', par(c('M1'), c('M2')), [OUT('Y11'), OUT('Y13')],
+  'Both a fault and an emergency stop sound the buzzer and light the red lamp.');
+
+/* ================================================================== *
+ *  LADDER EVALUATION ENGINE                                           *
+ * ================================================================== */
+function edgeTags() {
+  const set = new Set();
+  (function walk(nd) {
+    if (nd.k === 'r') set.add(nd.tag);
+    if (nd.a && Array.isArray(nd.a)) nd.a.forEach(x => { if (typeof x === 'object') walk(x); });
+  })({ k: 's', a: RUNGS.map(x => x.net) });
+  return Array.from(set);
+}
+const EDGE_TAGS = edgeTags();
+
+class PLC {
+  constructor() { this.reset(); }
+
+  reset() {
+    /* reuse the same objects so anything holding a reference (the HMI) keeps seeing live data */
+    const fresh = o => { if (!o) return {}; Object.keys(o).forEach(k => { delete o[k]; }); return o; };
+    this.v = fresh(this.v);
+    this.acc = fresh(this.acc);
+    this.edge = fresh(this.edge);
+    this.last = fresh(this.last);
+    this.ctuPrev = fresh(this.ctuPrev);
+    this.scans = 0;
+    DEV.forEach(d => {
+      this.v[d.tag] = d.type === 'BOOL' || d.type === 'TIMER' ? false : 0;
+    });
+    this.v.SM400 = true;
+    T_DEFS.forEach(t => { this.acc[t[0]] = 0; });
+    EDGE_TAGS.forEach(t => { this.edge[t] = false; this.last[t] = false; });
+    RUNGS.forEach(rg => { rg._p = false; });
+  }
+
+  ev(nd, pin) {
+    nd._in = pin;
+    let out;
+    switch (nd.k) {
+      case 'c': nd._val = !!this.v[nd.tag]; out = pin && nd._val; break;
+      case 'n': nd._val = !this.v[nd.tag]; out = pin && nd._val; break;
+      case 'r': nd._val = !!this.edge[nd.tag]; out = pin && nd._val; break;
+      case 'cmp': {
+        const x = this.v[nd.tag];
+        nd._val = nd.op === '>' ? x > nd.val : nd.op === '<' ? x < nd.val : nd.op === '=' ? x === nd.val : nd.op === '>=' ? x >= nd.val : x <= nd.val;
+        out = pin && nd._val; break;
+      }
+      case 's': { let p = pin; for (const ch of nd.a) p = this.ev(ch, p); out = p; break; }
+      case 'p': { out = false; for (const ch of nd.a) { if (this.ev(ch, pin)) out = true; } break; }
+      default: throw new Error('bad node ' + nd.k);
+    }
+    nd._out = !!out;
+    return nd._out;
+  }
+
+  num(x) { return typeof x === 'number' ? x : this.v[x]; }
+
+  calc(e) {
+    if (typeof e === 'number' || typeof e === 'string') return this.num(e);
+    const a = this.calc(e.a), b = this.calc(e.b);
+    if (e.op === 'add') return a + b;
+    if (e.op === 'mul') return a * b;
+    if (e.op === 'div') return b === 0 ? 0 : Math.trunc(a / b);
+    throw new Error('bad op');
+  }
+
+  apply(o, p, dt) {
+    o._on = p;
+    switch (o.t) {
+      case 'OUT': this.v[o.tag] = p; break;
+      case 'SET': if (p) this.v[o.tag] = true; break;
+      case 'RST': if (p) this.v[o.tag] = false; break;
+      case 'RSTN': if (p) o.tags.forEach(t => { this.v[t] = false; }); break;
+      case 'TON':
+        if (p) { this.acc[o.tag] = Math.min(this.acc[o.tag] + dt, o.ms); } else { this.acc[o.tag] = 0; }
+        this.v[o.tag] = this.acc[o.tag] >= o.ms;
+        break;
+      case 'CTU': {
+        const prev = this.ctuPrev[o.tag] || false;
+        if (this.v[o.reset]) { this.v[o.tag] = 0; }
+        else if (p && !prev && this.v[o.tag] < o.pv) { this.v[o.tag] += 1; }
+        this.ctuPrev[o.tag] = p;
+        break;
+      }
+      case 'MOV': if (p) this.v[o.dst] = this.num(o.src); break;
+      case 'COPY': if (p) this.v[o.dst] = !!this.v[o.src]; break;
+      case 'CALC': if (p) this.v[o.dst] = this.calc(o.e); break;
+      default: throw new Error('bad out');
+    }
+  }
+
+  scan(dt) {
+    dt = dt || SCAN_MS;
+    EDGE_TAGS.forEach(t => {
+      const now = !!this.v[t];
+      this.edge[t] = now && !this.last[t];
+      this.last[t] = now;
+    });
+    for (const rg of RUNGS) {
+      const p = this.ev(rg.net, true);
+      rg._p = p;
+      for (const o of rg.outs) this.apply(o, p, dt);
+    }
+    this.scans++;
+  }
+}
+
+/* ================================================================== *
+ *  VIRTUAL PLANT: pipelined conveyor line                             *
+ * ================================================================== */
+const POS = { feed: -4, s1: 12, s2: 28, s3: 44, s4: 60, s5: 76, end: 84 };
+const SPEED = 18;                        // position units per second
+const PITCH = 16;                        // distance between stations = carrier spacing
+const WIN = 1.0;                         // sensor window (+/-)
+
+class Plant {
+  constructor() {
+    this.mix = 'alt';
+    this.flags = { robotFault: false, camOff: false, jam: false, noMaterial: false, estop: false };
+    this.reset();
+  }
+
+  reset() {
+    this.packed = 0; this.rejected = 0; this.made = 0;
+    this.clearLine();
+  }
+
+  clearLine() {
+    this.products = [];
+    this.packProd = null;
+    this.feedT = 0; this.fed = false;
+    this.visionT = 0; this.visionFor = null;
+    this.packT = 0;
+    this.robot = { st: 'ready', t: 0, dest: 'good', prod: null };
+    this.p14 = 0; this.p15 = 0;
+    this.X = {};
+  }
+
+  nextType() {
+    const m = this.mix;
+    if (m === 'A') return 'A';
+    if (m === 'B') return 'B';
+    if (m === 'rand') return Math.random() < 0.3 ? 'B' : 'A';
+    return this.made % 2 === 0 ? 'A' : 'B';
+  }
+
+  step(Y, dt) {
+    const s = dt / 1000;
+    const f = this.flags;
+    const belt = () => this.products.filter(q => q.where === 'belt');
+    const at = pos => belt().find(q => Math.abs(q.pos - pos) <= WIN) || null;
+
+    /* feeder: one product per work phase at the belt start */
+    if (Y.Y0 && !f.noMaterial) {
+      this.feedT += s;
+      let spawn = POS.feed;
+      const ahead = belt().reduce((m, q) => (m === null || q.pos < m.pos ? q : m), null);
+      if (ahead) spawn = ahead.pos - PITCH * Math.floor((ahead.pos - POS.feed) / PITCH + 0.5);
+      if (!this.fed && this.feedT >= 1.2 && !belt().some(q => Math.abs(q.pos - spawn) < 3)) {
+        const type = this.nextType();
+        this.made++;
+        this.products.push({ id: this.made, type, pos: spawn, where: 'belt', cut: false, finished: false,
+                             defective: type === 'B', cutT: 0, pressT: 0 });
+        this.fed = true;
+      }
+    } else if (!Y.Y0) { this.feedT = 0; this.fed = false; }
+
+    /* conveyor moves every product on the belt together */
+    if (Y.Y1 && !f.jam) belt().forEach(q => { q.pos = Math.min(POS.end, q.pos + SPEED * s); });
+
+    /* cutter and press (visual state) */
+    const pc = at(POS.s2);
+    if (pc && Y.Y2) { pc.cutT += s; if (pc.cutT >= 2.8) pc.cut = true; }
+    const pf = at(POS.s3);
+    if (pf && Y.Y3) { pf.pressT += s; if (pf.pressT >= 4.8) pf.finished = true; }
+
+    const X = {};
+    const p1 = at(POS.s1);
+    X.X3 = !!p1;
+    X.X4 = !!p1 && p1.type === 'A';
+    X.X5 = !!p1 && p1.type === 'B';
+    X.X6 = !!pc;
+    X.X7 = !!pf;
+    const p4 = at(POS.s4);
+    X.X10 = !!p4;
+    const p5 = at(POS.s5);
+    X.X20 = !!p5;
+
+    /* vision system */
+    X.X11 = false; X.X12 = false;
+    if (p4 && Y.Y4 && !f.camOff) {
+      if (this.visionFor !== p4) { this.visionFor = p4; this.visionT = 0; }
+      this.visionT += s;
+      if (this.visionT >= 1.5) { X.X11 = true; X.X12 = p4.defective; }
+    } else { this.visionT = 0; this.visionFor = null; }
+
+    /* robot */
+    const R = this.robot;
+    X.X13 = false;
+    if (!f.robotFault) {
+      switch (R.st) {
+        case 'ready':
+          X.X13 = true;
+          if (Y.Y5 && p5) { R.st = 'pick'; R.t = 0; R.prod = p5; R.dest = Y.Y7 ? 'reject' : 'good'; }
+          break;
+        case 'pick': R.t += s; if (R.t >= 1.2) { R.prod.where = 'robot'; R.st = 'move'; R.t = 0; } break;
+        case 'move': R.t += s; if (R.t >= 1.6) { R.st = 'place'; R.t = 0; } break;
+        case 'place':
+          R.t += s;
+          if (R.t >= 0.8) {
+            this.products = this.products.filter(q => q !== R.prod);
+            if (R.dest === 'good') { R.prod.where = 'pack'; this.packProd = R.prod; this.packT = 0; }
+            else { this.rejected++; }
+            R.prod = null;
+            this.p14 = 0.5; R.st = 'return'; R.t = 0;
+          }
+          break;
+        case 'return': R.t += s; if (R.t >= 1.2) { R.st = 'ready'; R.t = 0; } break;
+      }
+    }
+    X.X16 = !f.robotFault;
+    X.X17 = !f.estop;
+
+    /* packaging machine */
+    if (this.packProd && Y.Y10) {
+      this.packT += s;
+      if (this.packT >= 3) { this.p15 = 0.5; this.packed++; this.packProd = null; this.packT = 0; }
+    } else { this.packT = 0; }
+
+    X.X14 = this.p14 > 0; if (this.p14 > 0) this.p14 -= s;
+    X.X15 = this.p15 > 0; if (this.p15 > 0) this.p15 -= s;
+    X.X0 = false; X.X1 = false; X.X2 = false;
+    Object.keys(X).forEach(k => { X[k] = !!X[k]; });
+    this.X = X;
+    return X;
+  }
+
+  wip() { return this.products.length + (this.packProd ? 1 : 0); }
+}
+
+/* ================================================================== *
+ *  SIMULATOR = plant + PLC                                            *
+ * ================================================================== */
+const INPUT_TAGS = X_DEFS.map(d => d[0]);
+const OUTPUT_TAGS = Y_DEFS.map(d => d[0]);
+
+class Sim {
+  constructor() {
+    this.plc = new PLC();
+    this.plant = new Plant();
+    this.forced = {};
+    this.hold = {};
+    this.time = 0;
+    this.history = [];
+    this.powerUp();
+  }
+
+  powerUp() {
+    this.plant.reset();
+    this.plc.reset();
+    this.hold = {};
+    this.time = 0;
+    this.history = [];
+    this.plant.X = this.plant.step({}, 0);
+  }
+
+  press(tag, scans) { this.hold[tag] = scans || 12; this.plc.v[tag] = true; }
+  pressPB(tag) { this.hold['_' + tag] = 12; }
+
+  scan() {
+    const plc = this.plc, v = plc.v;
+    const Y = {};
+    OUTPUT_TAGS.forEach(t => { Y[t] = !!v[t]; });
+    const X = this.plant.step(Y, SCAN_MS);
+    INPUT_TAGS.forEach(t => {
+      let val = X[t];
+      if (t === 'X0' || t === 'X1' || t === 'X2') val = !!this.hold['_' + t];
+      if (this.forced[t] === 0) val = false;
+      if (this.forced[t] === 1) val = true;
+      v[t] = !!val;
+    });
+    for (const tag of Object.keys(this.hold)) {
+      this.hold[tag]--;
+      if (this.hold[tag] <= 0) {
+        if (tag[0] !== '_') v[tag] = false;
+        delete this.hold[tag];
+      }
+    }
+    plc.scan(SCAN_MS);
+    if (plc.edge.M102 || plc.edge.X2) this.plant.clearLine();
+    this.time += SCAN_MS;
+    if (plc.v.M22 || plc.v.M23) {
+      this.history.push({ t: this.time, takt: plc.v.D104 / 10, defect: !!plc.v.M23 });
+      if (this.history.length > 40) this.history.shift();
+    }
+  }
+}
+
+/* ================================================================== *
+ *  STRUCTURED TEXT GENERATOR                                          *
+ * ================================================================== */
+function stRead(tag) {
+  const d = byTag[tag];
+  if (d.kind === 'T') return d.st + '.Q';
+  if (d.kind === 'C') return d.st + '.CV';
+  return d.st;
+}
+
+function stExpr(nd) {
+  switch (nd.k) {
+    case 'c': return stRead(nd.tag);
+    case 'n': return 'NOT ' + stRead(nd.tag);
+    case 'r': return 'Rt_' + nd.tag + '.Q';
+    case 'cmp': return '(' + stRead(nd.tag) + ' ' + nd.op + ' ' + nd.val + ')';
+    case 's': return '(' + nd.a.map(stExpr).join(' AND ') + ')';
+    case 'p': return '(' + nd.a.map(stExpr).join(' OR ') + ')';
+  }
+  throw new Error('bad node');
+}
+
+function stTop(nd) {
+  if (nd.k === 's') return nd.a.map(stExpr);
+  return [stExpr(nd)];
+}
+
+function stNum(x) {
+  if (typeof x === 'number') return String(x);
+  const d = byTag[x];
+  const base = d.kind === 'C' ? d.st + '.CV' : d.st;
+  return d.type === 'DINT' ? base : 'INT_TO_DINT(' + base + ')';
+}
+
+function stCalc(e) {
+  if (typeof e === 'number' || typeof e === 'string') return stNum(e);
+  const op = e.op === 'add' ? '+' : e.op === 'mul' ? '*' : '/';
+  return '(' + stCalc(e.a) + ' ' + op + ' ' + stCalc(e.b) + ')';
+}
+
+const ST_GROUPS = ['Field inputs', 'Field outputs', 'HMI bits', 'Internal relays', 'Data registers'];
+
+function genST(profile) {
+  const out = [];
+  const w = s => out.push(s);
+  const hw = profile === 'hardware';
+
+  w('(* ======================================================================');
+  w('   SMART TEXTILE MANUFACTURING - PLC PROGRAM v2 (IEC 61131-3 ST)');
+  w('   Pipelined indexing line with emergency stop.');
+  w('   Generated from the same rung list that the web simulator executes, so');
+  w('   the simulator and this program behave identically.');
+  w('');
+  w('   Task interval: 20 ms. The takt stopwatch rung adds 20 ms per scan - change');
+  w('   that constant if you change the task interval.');
+  w('');
+  w('   Address profile: ' + (hw ? 'HARDWARE - field inputs on %IX' : 'SIMULATION - field inputs are Modbus coils 816 to 832 (%QX102.0 ...)'));
+  w('   ====================================================================== *)');
+  w('');
+  w('PROGRAM SmartTextile');
+
+  const locOf = d => (d.group === 'Field inputs' && hw ? d.hw : d.loc);
+  const tyOf = d => (d.type === 'DINT' ? 'DINT' : d.type === 'INT' ? 'INT' : 'BOOL');
+  /* matiec needs located and non-located variables in separate VAR blocks */
+  w('  VAR');
+  w('    (* ---- located variables: I/O image, HMI bits, status, KPI registers ---- *)');
+  ST_GROUPS.forEach(g => {
+    w('    (* ' + g + ' *)');
+    DEV.filter(d => d.group === g && locOf(d)).forEach(d => {
+      w('    ' + d.st + ' AT ' + locOf(d) + ' : ' + tyOf(d) + ';  (* ' + d.tag + ': ' + d.desc + ' *)');
+    });
+  });
+  w('  END_VAR');
+  w('  VAR');
+  w('    (* ---- internal variables (not visible to Modbus) ---- *)');
+  DEV.filter(d => ST_GROUPS.indexOf(d.group) >= 0 && !locOf(d)).forEach(d => {
+    w('    ' + d.st + ' : ' + tyOf(d) + ';  (* ' + d.tag + ': ' + d.desc + ' *)');
+  });
+  w('  END_VAR');
+  w('  VAR');
+  w('    (* Timers and counters (IEC TON / CTU) *)');
+  DEV.filter(d => d.kind === 'T').forEach(d => w('    ' + d.st + ' : TON;  (* ' + d.tag + ': ' + d.desc + ' *)'));
+  DEV.filter(d => d.kind === 'C').forEach(d => w('    ' + d.st + ' : CTU;  (* ' + d.tag + ': ' + d.desc + ' *)'));
+  w('    (* Rising-edge detectors *)');
+  EDGE_TAGS.forEach(t => w('    Rt_' + t + ' : R_TRIG;'));
+  w('    pw : BOOL;  (* power flow of the current rung *)');
+  w('  END_VAR');
+  w('');
+  w('  (* ---- rising-edge snapshot (start of scan) ---- *)');
+  EDGE_TAGS.forEach(t => w('  Rt_' + t + '(CLK := ' + byTag[t].st + ');'));
+
+  let lastSec = '';
+  RUNGS.forEach(rg => {
+    if (rg.sec !== lastSec) {
+      lastSec = rg.sec;
+      w('');
+      w('  (* ================ ' + rg.sec + ' ================ *)');
+    }
+    w('');
+    w('  (* ' + rg.id + ': ' + rg.title + ' *)');
+    const lines = stTop(rg.net);
+    const single = rg.outs.length === 1 && rg.outs[0].t === 'OUT';
+    const pre = single ? '  ' + byTag[rg.outs[0].tag].st + ' := ' : '  pw := ';
+    if (lines.length === 1) w(pre + lines[0] + ';');
+    else {
+      w(pre + lines[0] + ' AND');
+      for (let i = 1; i < lines.length; i++) w('    ' + lines[i] + (i < lines.length - 1 ? ' AND' : ';'));
+    }
+    if (single) return;
+    rg.outs.forEach(o => {
+      const d = o.tag ? byTag[o.tag] : null;
+      switch (o.t) {
+        case 'OUT': w('  ' + d.st + ' := pw;'); break;
+        case 'SET': w('  IF pw THEN ' + d.st + ' := TRUE; END_IF;'); break;
+        case 'RST': w('  IF pw THEN ' + d.st + ' := FALSE; END_IF;'); break;
+        case 'RSTN': w('  IF pw THEN ' + o.tags.map(t => byTag[t].st + ' := FALSE;').join(' ') + ' END_IF;'); break;
+        case 'COPY': w('  IF pw THEN ' + byTag[o.dst].st + ' := ' + byTag[o.src].st + '; END_IF;'); break;
+        case 'TON': w('  ' + d.st + '(IN := pw, PT := T#' + o.ms + 'ms);'); break;
+        case 'CTU': w('  ' + d.st + '(CU := pw, R := ' + byTag[o.reset].st + ', PV := ' + o.pv + ');'); break;
+        case 'MOV': {
+          const dd = byTag[o.dst];
+          const src = typeof o.src === 'number' ? String(o.src) : stRead(o.src);
+          w('  IF pw THEN ' + dd.st + ' := ' + src + '; END_IF;');
+          break;
+        }
+        case 'CALC': {
+          const dd = byTag[o.dst];
+          const ex = stCalc(o.e);
+          w('  IF pw THEN ' + dd.st + ' := ' + (dd.type === 'DINT' ? ex : 'DINT_TO_INT(' + ex + ')') + '; END_IF;');
+          break;
+        }
+      }
+    });
+  });
+
+  w('');
+  w('END_PROGRAM');
+  w('');
+  w('');
+  w('CONFIGURATION Config0');
+  w('');
+  w('  RESOURCE Res0 ON PLC');
+  w('    TASK TaskMain(INTERVAL := T#20ms,PRIORITY := 0);');
+  w('    PROGRAM Inst0 WITH TaskMain : SmartTextile;');
+  w('  END_RESOURCE');
+  w('END_CONFIGURATION');
+  return out.join('\n') + '\n';
+}
+
+function modbusOf(loc) {
+  let m = /^%QX(\d+)\.(\d)$/.exec(loc);
+  if (m) return 'coil ' + (parseInt(m[1], 10) * 8 + parseInt(m[2], 10));
+  m = /^%IX(\d+)\.(\d)$/.exec(loc);
+  if (m) return 'discrete input ' + (parseInt(m[1], 10) * 8 + parseInt(m[2], 10));
+  m = /^%MW(\d+)$/.exec(loc);
+  if (m) return 'holding reg ' + (1024 + parseInt(m[1], 10));
+  return '';
+}
+
+return { SCAN_MS, DEV, byTag, RUNGS, EDGE_TAGS, PLC, Plant, Sim, POS, genST, modbusOf, INPUT_TAGS, OUTPUT_TAGS, T_DEFS };
+})();
+
+if (typeof module !== 'undefined') module.exports = G13;
+
+</script>
+<script>
+(function () {
+  const R = G13.RUNGS;
+  const ids = (...starts) => {
+    const out = [];
+    starts.forEach(s => R.forEach(rg => { if (rg.title.indexOf(s) === 0 && out.indexOf(rg.id) < 0) out.push(rg.id); }));
+    return out;
+  };
+  const FIX2 = [
+    ['Products jumped from place to place; the feeder teleported them.',
+      'The belt carries every product. The conveyor runs between stations, and each station sensor confirms arrival before work starts. The CoppeliaSim controller v2 moves products smoothly too.',
+      ids('Every old product', 'Every expected product', 'Main conveyor', 'Feeder at')],
+    ['One product at a time: the robot did every step, so output was about 2.7 products per minute.',
+      'Five stations work in parallel (indexing line). All products shift one station at once, and the work phase lasts as long as the slowest station instead of the sum. A type bit and a defect bit travel with each product.',
+      ids('Shift', 'Every occupied', 'Work complete', 'Work to index', 'Index complete')],
+    ['No emergency stop.',
+      'NC emergency-stop chain X17 plus an HMI E-STOP button. Either one latches M2, drops the run bit and every output, shows fault code 5, and can only be cleared with RESET after the chain is released.',
+      ids('Emergency stop', 'Reset', 'Start system', 'Stop system', 'Alarm buzzer')],
+    ['Cutting and finishing times differed between the PLC and the CoppeliaSim model.',
+      'Both use cutting 3 s, finishing 5 s for product A and 8 s for product B. The type bit travels with each product, so every station uses the type of the product that is really there.',
+      ids('Cutter and', 'Finishing time')],
+    ['The PLC and the CoppeliaSim cell were completely separate.',
+      'The PLC run, stop and E-stop signals can drive the CoppeliaSim robot cell through coppelia_plc_bridge.py, so E-STOP on the HMI also halts the simulated robot.',
+      ids('Start system', 'Stop system', 'Emergency stop')],
+    ['The production rate jumped between values because it used only the last gap between two products.',
+      'Rate is now the average: total products divided by running time. Takt time is still shown as the last gap.',
+      ids('Stopwatches', 'Takt time', 'Production rate')],
+    ['The robot could start while the conveyor moved the next product.',
+      'The conveyor may only index when every station is finished and the robot is home (X13).',
+      ids('Work complete')],
+    ['Packaging blocked the whole line.',
+      'The packaging machine runs on its own while the line continues. A good product waits at the robot station only if the packager is still busy.',
+      ids('Start packaging', 'Packaging machine', 'Robot pick request')],
+  ];
+  const FIX = [
+    ['X16 (robot fault) is wired normally closed, but the stop rung uses it as a normally open contact, so a healthy robot would stop the system.',
+      'Stop, start, reset and fault rungs use the NC form: the system stops when X16 is OFF and can only start or reset when X16 is ON.',
+      ids('Robot fault', 'Start system', 'Stop system', 'Reset')],
+    ['Auto and manual rungs only SET M30 and M31. They are never reset, are missing from the device list and no other rung reads them.',
+      'One flag, M31 (manual): HMI auto resets it, HMI manual sets it, and identification and the product override read it.',
+      ids('Select auto', 'Select manual', 'Manual override', 'Product type from HMI')],
+    ['Identification writes M7 (not defined) while other rungs use M17, and it is not tied to the identify step, so it runs all the time.',
+      'Identification runs only at station 1 after a 0.5 s dwell, and the result travels with the product as a type bit. The HMI override only works in manual mode.',
+      ids('Identification dwell', 'Identify product', 'Product type from HMI', 'Identification done')],
+    ['Nothing ever sets M10, so a cycle can never start.',
+      'An idle-start rung begins the first work phase when the machine runs and the line is empty.',
+      ids('Idle start')],
+    ['T0 and T1 are enabled by M0 only. After the first product they stay done, so the feed and cutting times are skipped.',
+      'Every timer is enabled by its own station and product, so it restarts for each product.',
+      ids('Feeder at', 'Cutter and', 'Finishing time')],
+    ['Y1 (conveyor) and Y3 (heat press) are driven by two rungs each, which is a double coil. Only the last one wins.',
+      'One rung per output. Y1 and Y3 each have a single coil with the conditions combined.',
+      ids('Main conveyor', 'Heat press')],
+    ['Sensors X7 and X10 are never used and nothing moves the product between stations, so every step started at once.',
+      'The conveyor indexes until every product reaches the next station sensor; the cutter, press and camera only run when a product is at their station.',
+      ids('Every expected', 'Cutter and', 'Heat press', 'Inspection trigger')],
+    ['M20 and M21 are set but never reset. After the first good product, every reject was also counted as good.',
+      'The defect flag belongs to one product and travels with it, so a reject can never be counted as good.',
+      ids('Result:', 'Shift defect', 'Good product sorted', 'Reject product sorted')],
+    ['The inspection rung never enters the robot step (no SET M15) and its last label says "Go to Inspection".',
+      'The result is latched at station 4 and moves to station 5 at the next index, where the robot picks it up.',
+      ids('Inspection done', 'Shift defect')],
+    ['The robot step waits for X15 (packaging complete) instead of X14 (robot place done), and a rejected product has no way back to feeding.',
+      'Sorting ends on X14. Good products go to packaging, rejects leave the line immediately.',
+      ids('Good product sorted', 'Reject product sorted', 'Product has left')],
+    ['The packaging rung resets M10 instead of M16, so packaging never ends.',
+      'Packaging has its own busy bit and ends on X15 with a watchdog.',
+      ids('Packaging machine', 'Packaged', 'Packaging done')],
+    ['Defect % multiplies D100 (the good count) and divides by an undefined D200. 16-bit maths also overflows, and there is no divide-by-zero guard.',
+      'D103 = D101 x 10000 / D102 in 32-bit maths, only while D102 is greater than 0.',
+      ids('Defect percentage', 'Total count')],
+    ['Cycle time uses T5 (K600), which runs while any step is active and never resets between products. The rate timer T6 is started by a one-scan pulse, so it cannot time 10 s.',
+      'A scan-based stopwatch is read and cleared by each sorted product (takt time). Rate = products / running time.',
+      ids('Stopwatches', 'Takt time', 'Production rate')],
+    ['The fault lamp Y13 is driven by M11 (identify step). Only the inspection timeout latches a fault; a robot fault does not.',
+      'Y13 and the buzzer follow M1 and M2. Five causes latch a fault and write a code to D108.',
+      ids('Alarm buzzer', 'Robot fault', 'Inspection timeout', 'Index or', 'Unknown product', 'Emergency stop')],
+    ['No timeout on transport, identification, robot or packaging, so the machine could wait forever.',
+      'Watchdogs: T7 (15 s index), T9 (3 s identification), T10 (30 s robot), T11 (15 s packaging), T4 (5 s inspection).',
+      ids('Index watchdog', 'Identification dwell', 'Robot watchdog', 'Packaging machine', 'Inspection timeout timer')],
+    ['Start, stop and reset were plain level contacts.',
+      'Start and reset trigger on the rising edge, so a stuck HMI bit cannot restart the machine. Stop dominates and is placed after start.',
+      ids('Start system', 'Stop system', 'Reset')],
+  ];
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const rows = list => list.map(r =>
+    '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td><td class="rl">' + r[2].join(', ') + '</td></tr>').join('');
+  document.getElementById('fix2-body').innerHTML = rows(FIX2);
+  document.getElementById('fix-body').innerHTML = rows(FIX);
+})();
+
+</script>
+<script>
+(function () {
+'use strict';
+
+const sim = new G13.Sim();
+const plc = sim.plc, v = plc.v;
+const $ = (s, el) => (el || document).querySelector(s);
+const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
+const SVGNS = 'http://www.w3.org/2000/svg';
+const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+let running = true;
+let speed = 2;
+let tab = 'operator';
+
+/* ================================================================== *
+ *  SIMULATION LOOP                                                    *
+ * ================================================================== */
+let lastT = 0, budget = 0, lastLadder = 0, lastIO = 0;
+
+function frame(t) {
+  const dt = Math.min(100, t - lastT || 16);
+  lastT = t;
+  if (running) {
+    budget += dt * speed;
+    let n = 0;
+    while (budget >= G13.SCAN_MS && n < 400) { sim.scan(); budget -= G13.SCAN_MS; n++; }
+    if (n >= 400) budget = 0;
+  }
+  renderHMI();
+  if (tab === 'operator') renderPlant(t);
+  if (tab === 'ladder' && t - lastLadder > 200) { renderLadder(); lastLadder = t; }
+  if (tab === 'io' && t - lastIO > 250) { renderIO(); lastIO = t; }
+  renderBar();
+  requestAnimationFrame(frame);
+}
+
+/* ================================================================== *
+ *  HEADER CONTROLS                                                    *
+ * ================================================================== */
+const runBtn = $('#btn-run');
+runBtn.addEventListener('click', () => { running = !running; renderBar(); });
+$('#btn-step').addEventListener('click', () => { if (!running) { sim.scan(); renderBar(); } });
+$$('#speed button').forEach(b => b.addEventListener('click', () => { speed = parseFloat(b.dataset.s); renderBar(); }));
+$('#mix').addEventListener('change', e => { sim.plant.mix = e.target.value; });
+$('#btn-power').addEventListener('click', () => {
+  sim.powerUp(); budget = 0;
+  Object.keys(sim.plant.flags).forEach(k => { sim.plant.flags[k] = false; });
+  sim.forced = {};
+  ioBuilt = false;
+  $$('#faults button').forEach(b => { b.setAttribute('aria-pressed', 'false'); });
+  sim.plant.mix = $('#mix').value;
+  lastPacked = -1; lastRejected = -1; hmiCache = '';
+});
+
+function renderBar() {
+  runBtn.textContent = running ? 'Pause' : 'Run';
+  runBtn.setAttribute('aria-pressed', String(!running));
+  $('#btn-step').disabled = running;
+  $$('#speed button').forEach(b => b.setAttribute('aria-pressed', String(parseFloat(b.dataset.s) === speed)));
+  const s = Math.floor(sim.time / 1000);
+  $('#clock').textContent = 'Scan ' + plc.scans + ' / sim time ' + String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+
+/* ================================================================== *
+ *  TABS                                                               *
+ * ================================================================== */
+function setTab(name) {
+  tab = name;
+  $$('[role=tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  $$('.panel').forEach(p => { p.hidden = p.id !== 'panel-' + name; });
+  if (name === 'ladder') { renderLadder(true); }
+  if (name === 'io') { renderIO(true); }
+}
+$$('[role=tab]').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
+/* ================================================================== *
+ *  HMI                                                                *
+ * ================================================================== */
+const PHASE_NAMES = { 0: 'IDLE', 10: 'INDEXING', 20: 'PROCESSING' };
+const FAULT_TEXT = { 0: 'NONE', 1: 'INSPECTION TIMEOUT', 2: 'ROBOT FAULT / TIMEOUT', 3: 'JAM, NO MATERIAL OR PACKAGING TIMEOUT',
+                     4: 'UNKNOWN PRODUCT TYPE', 5: 'EMERGENCY STOP' };
+
+$$('[data-hmi]').forEach(b => b.addEventListener('click', () => {
+  sim.press(b.dataset.hmi);
+  b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 180);
+}));
+
+const hmi = {};
+['status', 'mode', 'prod', 'step', 'total', 'good', 'reject', 'defect', 'cycle', 'rate', 'packed', 'wip', 'yield', 'alarm'].forEach(k => { hmi[k] = $('#h-' + k); });
+const lamps = $$('[data-lamp]');
+let hmiCache = '';
+
+function renderHMI() {
+  const st = v.M2 ? 'E-STOP' : v.M1 ? 'FAULT' : v.M0 ? 'RUNNING' : 'STOPPED';
+  const mode = v.M31 ? 'MANUAL' : 'AUTO';
+  const prod = v.D106 === 1 ? 'TYPE A' : v.D106 === 2 ? 'TYPE B' : '--';
+  const phase = v.M2 || v.M1 ? 'HALTED' : (PHASE_NAMES[v.D107] || '--');
+  const alarm = v.D108 ? FAULT_TEXT[v.D108] : (v.M0 ? 'NONE' : 'READY. PRESS START');
+  const wip = ['M50', 'M51', 'M52', 'M53', 'M54'].filter(t => v[t]).length + (v.M75 ? 1 : 0);
+  const yld = v.D102 ? (100 * v.D100 / v.D102).toFixed(1) + '%' : '--';
+  const key = [st, mode, prod, phase, v.D100, v.D101, v.D102, v.D103, v.D104, v.D105, v.D109, wip, alarm, v.Y0, v.M50, v.Y2, v.Y3, v.Y4, v.Y5, v.Y10].join('|');
+  if (key === hmiCache) return;
+  hmiCache = key;
+  hmi.status.textContent = st; hmi.status.dataset.k = st;
+  hmi.mode.textContent = mode;
+  hmi.prod.textContent = prod;
+  hmi.step.textContent = phase;
+  hmi.total.textContent = v.D102;
+  hmi.good.textContent = v.D100;
+  hmi.reject.textContent = v.D101;
+  hmi.defect.textContent = (v.D103 / 100).toFixed(1) + '%';
+  hmi.cycle.textContent = v.D104 ? (v.D104 / 10).toFixed(1) : '--';
+  hmi.rate.textContent = v.D105 ? (v.D105 / 10).toFixed(1) : '--';
+  hmi.packed.textContent = v.D109;
+  hmi.wip.textContent = wip;
+  hmi.yield.textContent = yld;
+  hmi.alarm.textContent = alarm;
+  $('#h-alarm-box').dataset.k = v.D108 ? 'fault' : v.M0 ? 'ok' : 'idle';
+  lamps.forEach(l => l.classList.toggle('on', !!v[l.dataset.lamp]));
+  $('#btn-man-a').classList.toggle('dim', !v.M31);
+  $('#btn-man-b').classList.toggle('dim', !v.M31);
+  $('#btn-auto').classList.toggle('sel', !v.M31);
+  $('#btn-manual').classList.toggle('sel', !!v.M31);
+  $('#btn-man-a').classList.toggle('sel', !!v.M31 && !v.M17);
+  $('#btn-man-b').classList.toggle('sel', !!v.M31 && !!v.M17);
+}
+
+/* ================================================================== *
+ *  FAULT / SCENARIO TOGGLES                                           *
+ * ================================================================== */
+$$('#faults button').forEach(b => b.addEventListener('click', () => {
+  const on = b.getAttribute('aria-pressed') !== 'true';
+  b.setAttribute('aria-pressed', String(on));
+  sim.plant.flags[b.dataset.flag] = on;
+}));
+
+/* ================================================================== *
+ *  PLANT ANIMATION                                                    *
+ * ================================================================== */
+const PX = pos => 100 + (pos + 4) * 7.5;
+const BELT_Y = 214;
+const plant = $('#plant');
+const P = G13.POS;
+
+function el(name, attrs, parent) {
+  const e = document.createElementNS(SVGNS, name);
+  Object.keys(attrs || {}).forEach(k => e.setAttribute(k, attrs[k]));
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+const parts = {};
+const MAXP = 10;
+function buildPlant() {
+  const svg = plant;
+  svg.innerHTML = '';
+  const g = el('g', {}, svg);
+
+  el('line', { x1: 20, y1: 300, x2: 980, y2: 300, class: 'pl-ground' }, g);
+
+  /* belt */
+  el('rect', { x: 46, y: BELT_Y, width: 718, height: 16, rx: 8, class: 'pl-belt' }, g);
+  parts.dash = el('line', { x1: 60, y1: BELT_Y + 8, x2: 750, y2: BELT_Y + 8, class: 'pl-dash' }, g);
+  [PX(P.feed), PX(P.s2), PX(P.s3), PX(P.s4), 728].forEach(x => el('line', { x1: x, y1: BELT_Y + 16, x2: x, y2: 300, class: 'pl-leg' }, g));
+
+  /* feeder hopper over the belt start */
+  const hx = PX(P.feed);
+  el('polygon', { points: (hx - 56) + ',104 ' + (hx + 56) + ',104 ' + (hx + 34) + ',182 ' + (hx - 34) + ',182', class: 'pl-metal' }, g);
+  parts.feedLamp = el('circle', { cx: hx, cy: 130, r: 7, class: 'pl-lamp' }, g);
+  el('text', { x: hx, y: 158, class: 'pl-txt', 'text-anchor': 'middle' }, g).textContent = 'Y0';
+  el('rect', { x: hx - 14, y: 182, width: 28, height: 14, class: 'pl-metal' }, g);
+  el('text', { x: hx, y: 276, class: 'pl-txt', 'text-anchor': 'middle' }, g).textContent = 'Feeder';
+
+  /* station 1: identification sensor */
+  const ix = PX(P.s1);
+  el('rect', { x: ix - 16, y: 138, width: 32, height: 16, rx: 3, class: 'pl-metal' }, g);
+  parts.idBeam = el('line', { x1: ix, y1: 154, x2: ix, y2: BELT_Y - 6, class: 'pl-beam' }, g);
+
+  /* station 2: cutter */
+  const cx = PX(P.s2);
+  el('rect', { x: cx - 36, y: 84, width: 8, height: 130, class: 'pl-metal' }, g);
+  el('rect', { x: cx + 28, y: 84, width: 8, height: 130, class: 'pl-metal' }, g);
+  el('rect', { x: cx - 36, y: 84, width: 72, height: 10, class: 'pl-metal' }, g);
+  parts.blade = el('g', {}, g);
+  el('rect', { x: cx - 4, y: 94, width: 8, height: 40, class: 'pl-metal' }, parts.blade);
+  el('polygon', { points: (cx - 20) + ',134 ' + (cx + 20) + ',134 ' + cx + ',156', class: 'pl-blade' }, parts.blade);
+
+  /* station 3: heat press */
+  const fx = PX(P.s3);
+  el('rect', { x: fx - 36, y: 84, width: 8, height: 130, class: 'pl-metal' }, g);
+  el('rect', { x: fx + 28, y: 84, width: 8, height: 130, class: 'pl-metal' }, g);
+  el('rect', { x: fx - 36, y: 84, width: 72, height: 10, class: 'pl-metal' }, g);
+  parts.press = el('g', {}, g);
+  el('rect', { x: fx - 3, y: 94, width: 6, height: 40, class: 'pl-metal' }, parts.press);
+  el('rect', { x: fx - 26, y: 134, width: 52, height: 12, rx: 2, class: 'pl-press' }, parts.press);
+
+  /* station 4: inspection gantry with camera */
+  const nx = PX(P.s4);
+  el('rect', { x: nx - 38, y: 60, width: 8, height: 154, class: 'pl-metal' }, g);
+  el('rect', { x: nx + 30, y: 60, width: 8, height: 154, class: 'pl-metal' }, g);
+  el('rect', { x: nx - 38, y: 60, width: 76, height: 10, class: 'pl-metal' }, g);
+  el('rect', { x: nx - 14, y: 70, width: 28, height: 22, rx: 3, class: 'pl-cam' }, g);
+  parts.flash = el('polygon', { points: nx + ',92 ' + (nx - 26) + ',' + (BELT_Y - 8) + ' ' + (nx + 26) + ',' + (BELT_Y - 8), class: 'pl-flash', opacity: 0 }, g);
+  parts.camLamp = el('circle', { cx: nx, cy: 81, r: 4, class: 'pl-lamp' }, g);
+
+  /* sensor lamps + captions */
+  [[PX(P.s1), 'X3', 'S1 identify'], [PX(P.s2), 'X6', 'S2 cutting'], [PX(P.s3), 'X7', 'S3 finishing'],
+   [PX(P.s4), 'X10', 'S4 inspection'], [PX(P.s5), 'X20', 'S5 robot']].forEach(s => {
+    parts['lamp' + s[1]] = el('circle', { cx: s[0], cy: 252, r: 7, class: 'pl-lamp' }, g);
+    el('text', { x: s[0], y: 276, class: 'pl-txt', 'text-anchor': 'middle' }, g).textContent = s[1] + '  ' + s[2];
+  });
+  parts.lampX4 = el('circle', { cx: ix - 26, cy: 252, r: 5, class: 'pl-lamp small' }, g);
+  parts.lampX5 = el('circle', { cx: ix + 26, cy: 252, r: 5, class: 'pl-lamp small' }, g);
+  el('text', { x: ix - 26, y: 240, class: 'pl-txt tiny', 'text-anchor': 'middle' }, g).textContent = 'A';
+  el('text', { x: ix + 26, y: 240, class: 'pl-txt tiny', 'text-anchor': 'middle' }, g).textContent = 'B';
+
+  /* robot base and arm */
+  el('rect', { x: 772, y: 196, width: 56, height: 18, rx: 3, class: 'pl-robot' }, g);
+  parts.arm1 = el('line', { x1: 800, y1: 190, x2: 800, y2: 120, class: 'pl-arm' }, g);
+  parts.arm2 = el('line', { x1: 800, y1: 120, x2: 800, y2: 60, class: 'pl-arm' }, g);
+  el('circle', { cx: 800, cy: 190, r: 9, class: 'pl-joint' }, g);
+  parts.elbow = el('circle', { cx: 800, cy: 120, r: 7, class: 'pl-joint' }, g);
+  parts.grip = el('circle', { cx: 800, cy: 60, r: 6, class: 'pl-grip' }, g);
+  el('text', { x: 800, y: 238, class: 'pl-txt', 'text-anchor': 'middle' }, g).textContent = 'Robot  Y5';
+  parts.robLamp = el('circle', { cx: 800, cy: 205, r: 5, class: 'pl-lamp' }, g);
+
+  /* packaging station */
+  el('rect', { x: 872, y: BELT_Y, width: 112, height: 14, rx: 3, class: 'pl-metal' }, g);
+  el('rect', { x: 972, y: 120, width: 8, height: 94, class: 'pl-metal' }, g);
+  el('rect', { x: 872, y: 120, width: 108, height: 10, class: 'pl-metal' }, g);
+  parts.packLamp = el('circle', { cx: 926, cy: 150, r: 7, class: 'pl-lamp' }, g);
+  el('text', { x: 926, y: 176, class: 'pl-txt', 'text-anchor': 'middle' }, g).textContent = 'Y10';
+  el('text', { x: 926, y: 276, class: 'pl-txt', 'text-anchor': 'middle' }, g).textContent = 'Packaging';
+  parts.packed = el('g', {}, g);
+  parts.packedTxt = el('text', { x: 926, y: 294, class: 'pl-txt strong', 'text-anchor': 'middle' }, g);
+
+  /* reject bin */
+  el('path', { d: 'M766,296 L766,258 L882,258 L882,296 Z', class: 'pl-bin' }, g);
+  parts.rejected = el('g', {}, g);
+  el('text', { x: 824, y: 316, class: 'pl-txt', 'text-anchor': 'middle' }, g).textContent = 'Reject bin';
+  parts.rejTxt = el('text', { x: 824, y: 336, class: 'pl-txt strong', 'text-anchor': 'middle' }, g);
+
+  /* products (pool) */
+  parts.prods = [];
+  for (let i = 0; i < MAXP; i++) {
+    const pg = el('g', { visibility: 'hidden' }, g);
+    const o = { g: pg };
+    o.rect = el('rect', { x: -30, y: -13, width: 60, height: 13, rx: 2, class: 'pl-fabric-a' }, pg);
+    o.sheen = el('rect', { x: -26, y: -11, width: 52, height: 3, rx: 1, class: 'pl-sheen', opacity: 0 }, pg);
+    o.cut = el('line', { x1: 8, y1: -13, x2: 8, y2: 0, class: 'pl-cutmark', opacity: 0 }, pg);
+    o.s1 = el('ellipse', { cx: -8, cy: -6, rx: 7, ry: 3.4, class: 'pl-stain', opacity: 0 }, pg);
+    o.s2 = el('ellipse', { cx: 16, cy: -7, rx: 4, ry: 2.4, class: 'pl-stain2', opacity: 0 }, pg);
+    o.tag = el('text', { x: 0, y: -18, class: 'pl-txt tiny', 'text-anchor': 'middle' }, pg);
+    parts.prods.push(o);
+  }
+
+  /* emergency stop banner */
+  parts.estop = el('g', { visibility: 'hidden' }, g);
+  el('rect', { x: 330, y: 8, width: 340, height: 40, rx: 6, fill: '#C62828' }, parts.estop);
+  el('text', { x: 500, y: 36, 'text-anchor': 'middle', fill: '#fff', 'font-size': 22, 'font-weight': 700, 'letter-spacing': 3, 'font-family': 'sans-serif' }, parts.estop).textContent = 'EMERGENCY STOP';
+}
+
+let bladeY = 0, plateY = 0, flashO = 0, dashOff = 0, lastRT = 0;
+let lastPacked = -1, lastRejected = -1;
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+
+function ik(tx, ty) {
+  const sx = 800, sy = 190, L = 70;
+  let dx = tx - sx, dy = ty - sy;
+  let d = Math.hypot(dx, dy);
+  const maxd = 2 * L - 2;
+  if (d > maxd) { dx *= maxd / d; dy *= maxd / d; d = maxd; tx = sx + dx; ty = sy + dy; }
+  const a = Math.atan2(dy, dx);
+  const h = Math.acos(Math.min(1, Math.max(-1, d / (2 * L))));
+  const ang = a - h;                         // elbow bends upwards
+  return { ex: sx + L * Math.cos(ang), ey: sy + L * Math.sin(ang), gx: tx, gy: ty };
+}
+
+function gripperPos(R) {
+  const H = [PX(P.s5), 148], Pk = [PX(P.s5), 196];
+  const good = R.dest === 'good';
+  const D1 = good ? [904, 172] : [824, 282], D2 = good ? [904, 198] : [824, 300];
+  switch (R.st) {
+    case 'pick': { const e = ease(R.t / 1.2); return [lerp(H[0], Pk[0], e), lerp(H[1], Pk[1], e)]; }
+    case 'move': { const e = ease(R.t / 1.6); return [lerp(Pk[0], D1[0], e), lerp(Pk[1] - 40, D1[1], e)]; }
+    case 'place': { const e = ease(R.t / 0.8); return [lerp(D1[0], D2[0], e), lerp(D1[1], D2[1], e)]; }
+    case 'return': { const e = ease(R.t / 1.2); return [lerp(D2[0], H[0], e), lerp(D2[1] - 40, H[1], e)]; }
+    default: return H;
+  }
+}
+
+function rebuildStacks() {
+  parts.packed.innerHTML = '';
+  const n = Math.min(sim.plant.packed, 8);
+  for (let i = 0; i < n; i++) {
+    const col = i % 2, row = Math.floor(i / 2);
+    el('rect', { x: 942 + col * 18, y: BELT_Y - 2 - 12 - row * 14, width: 16, height: 12, rx: 2, class: 'pl-box' }, parts.packed);
+  }
+  parts.packedTxt.textContent = 'Packed ' + sim.plant.packed;
+  parts.rejected.innerHTML = '';
+  const m = Math.min(sim.plant.rejected, 10);
+  for (let i = 0; i < m; i++) {
+    el('rect', { x: 774 + (i % 5) * 20, y: 290 - 11 - Math.floor(i / 5) * 12, width: 18, height: 10, rx: 2, class: 'pl-fabric-a' }, parts.rejected);
+    el('ellipse', { cx: 783 + (i % 5) * 20, cy: 290 - 6 - Math.floor(i / 5) * 12, rx: 4, ry: 2, class: 'pl-stain' }, parts.rejected);
+  }
+  parts.rejTxt.textContent = 'Rejected ' + sim.plant.rejected;
+}
+
+function renderPlant(t) {
+  const pl = sim.plant, R = pl.robot;
+  const lamp = (node, on) => node.classList.toggle('on', !!on);
+
+  lamp(parts.feedLamp, v.Y0); lamp(parts.lampX3, v.X3); lamp(parts.lampX4, v.X4); lamp(parts.lampX5, v.X5);
+  lamp(parts.lampX6, v.X6); lamp(parts.lampX7, v.X7); lamp(parts.lampX10, v.X10); lamp(parts.lampX20, v.X20);
+  lamp(parts.camLamp, v.Y4); lamp(parts.robLamp, v.Y5); lamp(parts.packLamp, v.Y10);
+  parts.idBeam.classList.toggle('on', !!v.X3);
+  parts.estop.setAttribute('visibility', v.M2 ? 'visible' : 'hidden');
+
+  /* belt movement */
+  if (v.Y1 && !pl.flags.jam && running && !reduceMotion) dashOff -= (t - lastRT) * 0.02 * speed;
+  lastRT = t;
+  parts.dash.setAttribute('stroke-dashoffset', dashOff.toFixed(1));
+  parts.dash.classList.toggle('run', !!v.Y1);
+
+  /* tools */
+  bladeY = lerp(bladeY, v.Y2 ? 42 : 0, 0.2);
+  parts.blade.setAttribute('transform', 'translate(0,' + bladeY.toFixed(1) + ')');
+  plateY = lerp(plateY, v.Y3 ? 54 : 0, 0.2);
+  parts.press.setAttribute('transform', 'translate(0,' + plateY.toFixed(1) + ')');
+  flashO = lerp(flashO, v.Y4 ? (v.X11 ? 0.18 : 0.38) : 0, 0.25);
+  parts.flash.setAttribute('opacity', flashO.toFixed(2));
+
+  /* robot */
+  const gp = gripperPos(R);
+  const k = ik(gp[0], gp[1]);
+  parts.arm1.setAttribute('x2', k.ex.toFixed(1)); parts.arm1.setAttribute('y2', k.ey.toFixed(1));
+  parts.arm2.setAttribute('x1', k.ex.toFixed(1)); parts.arm2.setAttribute('y1', k.ey.toFixed(1));
+  parts.arm2.setAttribute('x2', k.gx.toFixed(1)); parts.arm2.setAttribute('y2', k.gy.toFixed(1));
+  parts.elbow.setAttribute('cx', k.ex.toFixed(1)); parts.elbow.setAttribute('cy', k.ey.toFixed(1));
+  parts.grip.setAttribute('cx', k.gx.toFixed(1)); parts.grip.setAttribute('cy', k.gy.toFixed(1));
+  parts.grip.classList.toggle('fault', !!pl.flags.robotFault);
+
+  /* products on the line */
+  const list = pl.products.slice();
+  if (pl.packProd) list.push(pl.packProd);
+  parts.prods.forEach((o, i) => {
+    const p = list[i];
+    if (!p) { o.g.setAttribute('visibility', 'hidden'); return; }
+    let x, y;
+    if (p.where === 'belt') { x = PX(p.pos); y = BELT_Y; }
+    else if (p.where === 'robot') { x = k.gx; y = k.gy + 16; }
+    else { x = 904; y = BELT_Y; }
+    o.g.setAttribute('visibility', 'visible');
+    o.g.setAttribute('transform', 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ')');
+    o.tag.textContent = p.type;
+    o.s1.setAttribute('opacity', p.defective ? 1 : 0);
+    o.s2.setAttribute('opacity', p.defective ? 1 : 0);
+    o.cut.setAttribute('opacity', p.cut ? 1 : 0);
+    o.sheen.setAttribute('opacity', p.finished ? 0.9 : 0);
+  });
+  if (pl.packed !== lastPacked || pl.rejected !== lastRejected) { lastPacked = pl.packed; lastRejected = pl.rejected; rebuildStacks(); }
+}
+
+/* ================================================================== *
+ *  LADDER VIEWER                                                      *
+ * ================================================================== */
+const CW = 92, RH = 74, NETX = 36, OUTW = 196;
+let NETW = 0;
+
+function measure(nd) {
+  if (nd.k === 's') { nd.a.forEach(measure); nd._w = nd.a.reduce((s, x) => s + x._w, 0); nd._h = Math.max.apply(null, nd.a.map(x => x._h)); }
+  else if (nd.k === 'p') { nd.a.forEach(measure); nd._w = Math.max.apply(null, nd.a.map(x => x._w)); nd._h = nd.a.reduce((s, x) => s + x._h, 0); }
+  else { nd._w = CW; nd._h = 1; }
+}
+G13.RUNGS.forEach(rg => { measure(rg.net); NETW = Math.max(NETW, rg.net._w); });
+
+const ln = (x1, y1, x2, y2, on) => '<line class="w ' + (on ? 'on' : 'off') + '" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"/>';
+const cls = on => (on ? 'on' : 'off');
+
+function drawNode(nd, x, y, W) {
+  const cy = y + RH / 2;
+  if (nd.k === 's') {
+    let s = '', cx = x;
+    nd.a.forEach(ch => { s += drawNode(ch, cx, y, ch._w); cx += ch._w; });
+    if (W > nd._w) s += ln(cx, cy, x + W, cy, nd._out);
+    return s;
+  }
+  if (nd.k === 'p') {
+    let s = '', off = 0, lastY = cy;
+    nd.a.forEach(ch => { s += drawNode(ch, x, y + off * RH, W); lastY = y + off * RH + RH / 2; off += ch._h; });
+    if (lastY > cy) s += ln(x, cy, x, lastY, nd._in) + ln(x + W, cy, x + W, lastY, nd._out);
+    return s;
+  }
+  const mid = x + W / 2;
+  const d = G13.byTag[nd.tag];
+  let s = ln(x, cy, mid - 10, cy, nd._in) + ln(mid + 10, cy, x + W, cy, nd._out);
+  if (nd.k === 'cmp') {
+    s = ln(x, cy, mid - 30, cy, nd._in) + ln(mid + 30, cy, x + W, cy, nd._out);
+    s += '<rect class="cb ' + cls(nd._val) + '" x="' + (mid - 30) + '" y="' + (cy - 14) + '" width="60" height="28" rx="3" fill="none"/>';
+    s += '<text class="cs" x="' + mid + '" y="' + (cy + 4) + '">' + nd.tag + ' ' + esc(nd.op) + ' ' + nd.val + '</text>';
+  } else {
+    s += '<line class="cb ' + cls(nd._val) + '" x1="' + (mid - 10) + '" y1="' + (cy - 15) + '" x2="' + (mid - 10) + '" y2="' + (cy + 15) + '"/>';
+    s += '<line class="cb ' + cls(nd._val) + '" x1="' + (mid + 10) + '" y1="' + (cy - 15) + '" x2="' + (mid + 10) + '" y2="' + (cy + 15) + '"/>';
+    if (nd.k === 'n') s += '<line class="cb ' + cls(nd._val) + '" x1="' + (mid - 14) + '" y1="' + (cy + 13) + '" x2="' + (mid + 14) + '" y2="' + (cy - 13) + '"/>';
+    if (nd.k === 'r') s += '<text class="cs" x="' + mid + '" y="' + (cy + 5) + '">\u2191</text>';
+  }
+  s += '<text class="tg" x="' + mid + '" y="' + (cy - 21) + '">' + esc(nd.tag === 'SM400' ? 'SM400' : nd.tag) + '</text>';
+  s += '<text class="sh" x="' + mid + '" y="' + (cy + 30) + '">' + esc(d ? d.short : '') + '</text>';
+  return s;
+}
+
+function exprText(e) {
+  if (typeof e === 'number') return String(e);
+  if (typeof e === 'string') return e;
+  const op = e.op === 'add' ? '+' : e.op === 'mul' ? '\u00d7' : '\u00f7';
+  return exprText(e.a) + ' ' + op + ' ' + exprText(e.b);
+}
+
+function drawOut(o, x, y) {
+  const cy = y + RH / 2, on = o._on;
+  const d = o.tag ? G13.byTag[o.tag] : null;
+  let s = '';
+  if (o.t === 'OUT' || o.t === 'SET' || o.t === 'RST') {
+    const mid = x + OUTW / 2;
+    const state = o.t === 'OUT' ? !!v[o.tag] : on;
+    s += ln(x, cy, mid - 14, cy, on) + ln(mid + 14, cy, x + OUTW, cy, on);
+    s += '<path class="cb ' + cls(state) + '" d="M' + (mid - 7) + ' ' + (cy - 14) + ' Q' + (mid - 17) + ' ' + cy + ' ' + (mid - 7) + ' ' + (cy + 14) + '" fill="none"/>';
+    s += '<path class="cb ' + cls(state) + '" d="M' + (mid + 7) + ' ' + (cy - 14) + ' Q' + (mid + 17) + ' ' + cy + ' ' + (mid + 7) + ' ' + (cy + 14) + '" fill="none"/>';
+    if (o.t !== 'OUT') s += '<text class="cs" x="' + mid + '" y="' + (cy + 5) + '">' + (o.t === 'SET' ? 'S' : 'R') + '</text>';
+    s += '<text class="tg" x="' + mid + '" y="' + (cy - 21) + '">' + o.tag + '</text>';
+    s += '<text class="sh" x="' + mid + '" y="' + (cy + 30) + '">' + esc(d.short) + '</text>';
+    return s;
+  }
+  const bx = x + 14, bw = OUTW - 20, bh = 46;
+  s += ln(x, cy, bx, cy, on) + ln(bx + bw, cy, x + OUTW, cy, on);
+  s += '<rect class="bx ' + cls(on) + '" x="' + bx + '" y="' + (cy - bh / 2) + '" width="' + bw + '" height="' + bh + '" rx="4"/>';
+  let l1 = '', l2 = '';
+  if (o.t === 'TON') { l1 = 'TON ' + o.tag + '  K' + (o.ms / 100); l2 = (plc.acc[o.tag] / 1000).toFixed(1) + ' / ' + (o.ms / 1000).toFixed(1) + ' s' + (v[o.tag] ? '  done' : ''); }
+  else if (o.t === 'CTU') { l1 = 'CTU ' + o.tag + '  K' + o.pv; l2 = 'CV ' + v[o.tag] + '   reset ' + o.reset; }
+  else if (o.t === 'MOV') { l1 = 'MOV ' + (typeof o.src === 'number' ? 'K' + o.src : o.src) + ' \u2192 ' + o.dst; l2 = o.dst + ' = ' + v[o.dst]; }
+  else if (o.t === 'CALC') { l1 = o.text || (o.dst + ' = ' + exprText(o.e)); l2 = o.dst + ' = ' + v[o.dst]; }
+  else if (o.t === 'COPY') { l1 = 'COPY ' + o.src + ' \u2192 ' + o.dst; l2 = o.dst + ' = ' + (v[o.dst] ? 1 : 0); }
+  else if (o.t === 'RSTN') { l1 = o.label; l2 = ''; }
+  s += '<text class="bt" x="' + (bx + bw / 2) + '" y="' + (cy - (l2 ? 4 : -4)) + '">' + esc(l1) + '</text>';
+  if (l2) s += '<text class="bs" x="' + (bx + bw / 2) + '" y="' + (cy + 12) + '">' + esc(l2) + '</text>';
+  return s;
+}
+
+const OX = NETX + NETW + 28;
+const RAIL_R = OX + 16 + OUTW + 8;
+const SVG_W = RAIL_R + 16;
+
+function rungSvg(rg) {
+  const rows = Math.max(rg.net._h, rg.outs.length);
+  const H = rows * RH + 12, top = 6, cy0 = top + RH / 2;
+  const pw = !!rg._p;
+  let s = '<svg viewBox="0 0 ' + SVG_W + ' ' + H + '" role="img" aria-label="Ladder rung ' + rg.id + '">';
+  s += '<line class="rail" x1="14" y1="' + top + '" x2="14" y2="' + (top + rows * RH) + '"/>';
+  s += '<line class="rail" x1="' + RAIL_R + '" y1="' + top + '" x2="' + RAIL_R + '" y2="' + (top + rows * RH) + '"/>';
+  s += ln(14, cy0, NETX, cy0, true);
+  s += drawNode(rg.net, NETX, top, NETW);
+  s += ln(NETX + NETW, cy0, OX, cy0, pw);
+  if (rg.outs.length > 1) s += ln(OX, cy0, OX, top + (rg.outs.length - 1) * RH + RH / 2, pw);
+  rg.outs.forEach((o, i) => {
+    const y = top + i * RH, cy = y + RH / 2;
+    s += ln(OX, cy, OX + 16, cy, pw) + drawOut(o, OX + 16, y) + ln(OX + 16 + OUTW, cy, RAIL_R, cy, pw);
+  });
+  return s + '</svg>';
+}
+
+let ladderBuilt = false;
+const rungEls = {};
+function buildLadder() {
+  const host = $('#ladder-list');
+  let html = '', sec = '';
+  const chips = [];
+  G13.RUNGS.forEach(rg => {
+    if (rg.sec !== sec) {
+      sec = rg.sec;
+      const sid = 'sec-' + sec[0];
+      chips.push('<a href="#' + sid + '" data-sec="' + sec[0] + '">' + esc(sec.slice(0, 1)) + '</a>');
+      html += '<h2 class="sec" id="' + sid + '">' + esc(sec) + '</h2>';
+    }
+    const tags = [];
+    (function walk(nd) { if (nd.tag) tags.push(nd.tag); if (Array.isArray(nd.a)) nd.a.forEach(walk); })(rg.net);
+    rg.outs.forEach(o => { if (o.tag) tags.push(o.tag); if (o.dst) tags.push(o.dst); });
+    html += '<article class="rung" id="' + rg.id + '" data-search="' + esc((rg.id + ' ' + rg.title + ' ' + tags.join(' ')).toLowerCase()) + '">' +
+      '<header><span class="rid">' + rg.id + '</span><h3>' + esc(rg.title) + '</h3><span class="rstate" id="st-' + rg.id + '">off</span></header>' +
+      '<div class="rsvg" id="sv-' + rg.id + '"></div>' +
+      (rg.note ? '<p class="rnote">' + esc(rg.note) + '</p>' : '') + '</article>';
+  });
+  host.innerHTML = html;
+  $('#sec-chips').innerHTML = chips.join('');
+  G13.RUNGS.forEach(rg => { rungEls[rg.id] = { art: $('#' + rg.id), sv: $('#sv-' + rg.id), st: $('#st-' + rg.id), cache: '' }; });
+  ladderBuilt = true;
+}
+
+function applyFilter() {
+  const q = $('#lad-search').value.trim().toLowerCase();
+  const only = $('#lad-only').getAttribute('aria-pressed') === 'true';
+  G13.RUNGS.forEach(rg => {
+    const e = rungEls[rg.id];
+    const hit = !q || e.art.dataset.search.indexOf(q) >= 0;
+    e.art.hidden = !(hit && (!only || rg._p));
+  });
+}
+
+function renderLadder(force) {
+  if (!ladderBuilt) buildLadder();
+  G13.RUNGS.forEach(rg => {
+    const e = rungEls[rg.id];
+    e.st.textContent = rg._p ? 'energized' : 'off';
+    e.st.className = 'rstate ' + (rg._p ? 'on' : 'off');
+    e.art.classList.toggle('live', !!rg._p);
+    if (e.art.hidden && !force) return;
+    const svg = rungSvg(rg);
+    if (svg !== e.cache || force) { e.sv.innerHTML = svg; e.cache = svg; }
+  });
+  applyFilter();
+}
+$('#lad-search').addEventListener('input', () => { if (ladderBuilt) applyFilter(); });
+$('#lad-only').addEventListener('click', e => {
+  const b = e.currentTarget;
+  b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
+  if (ladderBuilt) { renderLadder(true); }
+});
+
+/* ================================================================== *
+ *  I/O MONITOR                                                        *
+ * ================================================================== */
+let ioBuilt = false;
+const ioCells = {};
+function buildIO() {
+  const groups = ['Field inputs', 'Field outputs', 'HMI bits', 'Internal relays', 'Timers', 'Counters', 'Data registers'];
+  let html = '';
+  groups.forEach(g => {
+    html += '<h2 class="sec">' + g + '</h2><div class="tbl-wrap"><table class="io"><thead><tr><th>Tag</th><th>Description</th><th>Value</th><th>OpenPLC variable</th><th>Address</th>' +
+      (g === 'Field inputs' ? '<th>Force</th>' : '') + '</tr></thead><tbody>';
+    G13.DEV.filter(d => d.group === g).forEach(d => {
+      html += '<tr><td class="mono">' + d.tag + '</td><td>' + esc(d.desc) + '</td><td class="val" id="io-' + d.tag + '">0</td><td class="mono sm">' + d.st + '</td><td class="mono sm">' + esc(d.loc || '') + '</td>';
+      if (g === 'Field inputs') {
+        if (['X0', 'X1', 'X2'].indexOf(d.tag) >= 0) html += '<td><button class="mini" data-pb="' + d.tag + '">Press</button></td>';
+        else html += '<td class="force" data-force="' + d.tag + '"><button class="mini" data-f="auto" aria-pressed="true">Auto</button><button class="mini" data-f="0" aria-pressed="false">0</button><button class="mini" data-f="1" aria-pressed="false">1</button></td>';
+      }
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+  });
+  $('#io-host').innerHTML = html;
+  $$('[data-pb]').forEach(b => b.addEventListener('click', () => sim.pressPB(b.dataset.pb)));
+  $$('[data-force]').forEach(td => {
+    $$('button', td).forEach(b => b.addEventListener('click', () => {
+      const tag = td.dataset.force;
+      if (b.dataset.f === 'auto') delete sim.forced[tag]; else sim.forced[tag] = parseInt(b.dataset.f, 10);
+      $$('button', td).forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    }));
+  });
+  G13.DEV.forEach(d => { ioCells[d.tag] = $('#io-' + d.tag); });
+  ioBuilt = true;
+}
+function renderIO(force) {
+  if (!ioBuilt) buildIO();
+  G13.DEV.forEach(d => {
+    const c = ioCells[d.tag]; if (!c) return;
+    let txt, on = false;
+    if (d.type === 'BOOL') { on = !!v[d.tag]; txt = on ? 'ON' : 'off'; }
+    else if (d.type === 'TIMER') { on = !!v[d.tag]; txt = (plc.acc[d.tag] / 1000).toFixed(1) + ' s' + (on ? '  done' : ''); }
+    else { txt = String(v[d.tag]); on = v[d.tag] !== 0; }
+    if (c.textContent !== txt || force) { c.textContent = txt; }
+    c.classList.toggle('on', on);
+  });
+}
+
+/* ================================================================== *
+ *  OPENPLC TAB                                                        *
+ * ================================================================== */
+let stProfile = 'simulation';
+function buildOpenPLC() {
+  const code = G13.genST(stProfile);
+  $('#st-code').textContent = code;
+  $('#st-meta').textContent = code.split('\n').length + ' lines, compiles with the OpenPLC (matiec) compiler';
+  let rows = '';
+  G13.DEV.filter(d => d.loc).forEach(d => {
+    const loc = (d.group === 'Field inputs' && stProfile === 'hardware') ? d.hw : d.loc;
+    rows += '<tr><td class="mono">' + d.tag + '</td><td>' + esc(d.desc) + '</td><td class="mono sm">' + d.st + '</td><td class="mono sm">' + loc + '</td><td class="mono sm">' + esc(G13.modbusOf(loc)) + '</td></tr>';
+  });
+  $('#map-body').innerHTML = rows;
+}
+$$('#st-profile button').forEach(b => b.addEventListener('click', () => {
+  stProfile = b.dataset.p;
+  $$('#st-profile button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  buildOpenPLC();
+}));
+$('#st-copy').addEventListener('click', () => {
+  const text = $('#st-code').textContent;
+  const done = ok => { $('#st-copy').textContent = ok ? 'Copied' : 'Select the code and copy'; setTimeout(() => { $('#st-copy').textContent = 'Copy code'; }, 1800); };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(() => done(true), () => fallback()); }
+    else fallback();
+  } catch (e) { fallback(); }
+  function fallback() {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta); done(ok);
+  }
+});
+
+/* ================================================================== *
+ *  START                                                              *
+ * ================================================================== */
+buildPlant();
+rebuildStacks();
+buildOpenPLC();
+setTab('operator');
+renderBar();
+requestAnimationFrame(frame);
+
+window.__g13 = { sim, setTab, renderLadder, renderIO, step: n => { for (let i = 0; i < n; i++) sim.scan(); } };
+})();
+
+</script>
+</body>
+</html>

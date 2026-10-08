@@ -1,0 +1,4 @@
+pymodbus
+coppeliasim-zmqremoteapi-client
+opencv-python
+numpy
